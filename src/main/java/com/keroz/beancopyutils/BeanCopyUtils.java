@@ -1,7 +1,8 @@
 package com.keroz.beancopyutils;
 
 import java.lang.annotation.Annotation;
-import java.lang.ref.WeakReference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -13,6 +14,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import com.esotericsoftware.reflectasm.MethodAccess;
@@ -21,14 +23,13 @@ import com.keroz.beancopyutils.annotation.IgnoreCondition;
 
 import org.apache.commons.lang3.StringUtils;
 
-import lombok.Builder;
 import lombok.Data;
 
 /**
- * Bean拷贝工具, 集合属性只支持<code>List</code>
+ * Bean拷贝工具, 集合属性只支持{@code List}
  * <p>
- * 提供了拷贝单个对象和<code>List</code>的若干个重载方法
- * </p>
+ * 提供了拷贝单个对象和{@code List}的若干个重载方法
+ * 
  * 
  */
 public class BeanCopyUtils {
@@ -36,7 +37,8 @@ public class BeanCopyUtils {
     /**
      * 缓存
      */
-    private static Map<CacheKey, Cache> cacheMap = new HashMap<CacheKey, Cache>();
+    private static Map<Class<?>, CacheReference> cacheMap = new ConcurrentHashMap<>();
+    private static ReferenceQueue<Cache> referenceQueue = new ReferenceQueue<>();
 
     /**
      * 是否启用缓存
@@ -99,7 +101,7 @@ public class BeanCopyUtils {
         if (target == null) {
             throw new IllegalArgumentException("Target object is null");
         }
-        recursion(source, target, ignoreConditions, ignoreNull);
+        doCopy(source, target, ignoreConditions, ignoreNull);
     }
 
     /**
@@ -217,7 +219,7 @@ public class BeanCopyUtils {
                 if (isPrimitive) {
                     tarList.add((Target) src);
                 } else {
-                    tarList.add((Target) recursion(src, tarClass.newInstance(), ignoreConditions, ignoreNull));
+                    tarList.add((Target) doCopy(src, tarClass.newInstance(), ignoreConditions, ignoreNull));
                 }
             } catch (InstantiationException e) {
                 e.printStackTrace();
@@ -299,7 +301,7 @@ public class BeanCopyUtils {
      * 
      */
     @SuppressWarnings("unchecked")
-    private static <Target, Source> Target recursion(Source source, Target target, String ignoreConditions,
+    private static <Target, Source> Target doCopy(Source source, Target target, String ignoreConditions,
             boolean ignoreNull) {
         if (source == null) {
             return null;
@@ -358,7 +360,7 @@ public class BeanCopyUtils {
                                         ignoreConditions, ignoreNull));
                             } else {
                                 // 如果是其他引用类型
-                                tarField.set(target, BeanCopyUtils.recursion(value, tarFieldClass.newInstance(),
+                                tarField.set(target, BeanCopyUtils.doCopy(value, tarFieldClass.newInstance(),
                                         ignoreConditions, ignoreNull));
                             }
                         }
@@ -381,25 +383,23 @@ public class BeanCopyUtils {
      * @return 类对象对应的缓存
      */
     private static Cache getCache(Class<?> clazz) {
-        Cache cache = null;
-        CacheKey cacheKey = new CacheKey(clazz);
-        if (cacheMap.containsKey(cacheKey)) {
-            cache = cacheMap.get(cacheKey);
-        } else {
-            cache = initCache(clazz);
-            cacheMap.put(cacheKey, cache);
+        expungeStaleEntries();
+        CacheReference ref = cacheMap.get(clazz);
+        if (ref == null || ref.get() == null) {
+            ref = new CacheReference(clazz, referenceQueue);
+            cacheMap.put(clazz, ref);
         }
-        return cache;
+        return ref.get();
     }
 
-    /**
-     * 新建缓存
-     * 
-     * @param clazz 类对象
-     * @return 类对象对应的缓存
-     */
-    private static Cache initCache(Class<?> clazz) {
-        return Cache.builder().methodAccess(MethodAccess.get(clazz)).build();
+    private static void expungeStaleEntries() {
+        for (Object collected; (collected = referenceQueue.poll()) != null; ) {
+            synchronized (referenceQueue) {
+                // @SuppressWarnings("unchecked")
+                CacheReference ref = (CacheReference) collected;
+                cacheMap.remove(ref.clazz);
+            }
+        }
     }
 
     /**
@@ -688,28 +688,26 @@ public class BeanCopyUtils {
         return methods;
     }
 
-    private static class CacheKey extends WeakReference<Class<?>> {
+    private static class CacheReference extends SoftReference<Cache> {
 
-        public CacheKey(Class<?> clazz) {
-            super(clazz);
-        }
+        private Class<?> clazz;
 
-        @Override
-        public int hashCode() {
-            return this.get().hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return this.get().equals(((CacheKey) obj).get());
+        public CacheReference(Class<?> clazz, ReferenceQueue<Cache> referenceQueue) {
+            super(new Cache(clazz), referenceQueue);
+            this.clazz = clazz;
         }
 
     }
 
     @Data
-    @Builder
     private static class Cache {
 
+        private Cache(Class<?> clazz) {
+            this.clazz = clazz;
+            this.methodAccess = MethodAccess.get(clazz);
+        }
+
+        private Class<?> clazz;
         private MethodAccess methodAccess;
         private List<Field> fields;
         private HashMap<String, FieldReader> fieldReaderMap;
