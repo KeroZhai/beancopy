@@ -7,18 +7,19 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 设置拷贝对象时忽略的属性 
+ * 标明<strong>目标对象中</strong>被注解的字段在拷贝时需要被忽略。
  * <p>
- *     <code>when</code> 表示何时忽略, <code>except</code> 表示何时不忽略, 为空则默认忽略
- * </p>
+ * {@code when}用以指明在什么{@link IgnoreCondition 条件}下忽略该字段，{@code except}用以指明在什么{@link IgnoreCondition 条件}下不忽略此字段。
+ * 
+ * @see IgnoreCondition
  */
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CopyIgnore {
 
-    String[] when() default  "";
+    String[] when() default "";
 
     String[] except() default "";
-    
+
 }
