@@ -1,8 +1,6 @@
 package com.keroz.beancopyutils;
 
-import java.lang.annotation.Annotation;
 import java.lang.ref.ReferenceQueue;
-import java.lang.ref.SoftReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -13,23 +11,22 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import com.esotericsoftware.reflectasm.MethodAccess;
 import com.keroz.beancopyutils.annotation.CopyIgnore;
 import com.keroz.beancopyutils.annotation.IgnoreCondition;
-
-import org.apache.commons.lang3.StringUtils;
-
-import lombok.Data;
+import com.keroz.beancopyutils.cache.Cache;
+import com.keroz.beancopyutils.cache.CacheReference;
+import com.keroz.beancopyutils.fieldaccesser.FieldReader;
+import com.keroz.beancopyutils.fieldaccesser.FieldWriter;
 
 /**
- * Bean拷贝工具, 集合属性只支持{@code List}
+ * Bean 拷贝工具, 集合属性只支持{@code List}
  * <p>
- * 提供了拷贝单个对象和{@code List}的若干个重载方法
- * 
+ * 提供了拷贝单个对象和{@code List}的若干个静态重载方法，搭配{@link CopyIgnore}和
+ * {@link IgnoreCondition}以实现多种灵活的拷贝方式。
  * 
  */
 public class BeanCopyUtils {
@@ -37,7 +34,7 @@ public class BeanCopyUtils {
     /**
      * 缓存
      */
-    private static Map<Class<?>, CacheReference> cacheMap = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<Class<?>, CacheReference> cacheMap = new ConcurrentHashMap<>();
     private static ReferenceQueue<Cache> referenceQueue = new ReferenceQueue<>();
 
     /**
@@ -45,6 +42,11 @@ public class BeanCopyUtils {
      */
     private static boolean cacheEnabled = true;
 
+    /**
+     * 查看是否启用了缓存
+     * 
+     * @return 如果启用则返回{@code true}
+     */
     public static boolean isCacheEnabled() {
         return cacheEnabled;
     }
@@ -58,94 +60,105 @@ public class BeanCopyUtils {
     }
 
     /**
-     * 
-     * @param source 源对象
-     * @param target 目标对象
+     * @param <Source> 源对象类型
+     * @param <Target> 目标对象类型
+     * @param source   源对象
+     * @param target   目标对象
      */
     public static <Target, Source> void copy(Source source, Target target) {
-        copy(source, target, null, false);
+        copy(source, target, false, null);
     }
 
     /**
-     * 
+     * @param <Source>   源对象类型
+     * @param <Target>   目标对象类型
      * @param source     源对象
      * @param target     目标对象
-     * @param ignoreNull 是否忽略null值
+     * @param ignoreNull 是否忽略 null 值
+     * 
      * @see CopyIgnore
      */
     public static <Target, Source> void copy(Source source, Target target, boolean ignoreNull) {
-        copy(source, target, null, ignoreNull);
+        copy(source, target, ignoreNull, null);
     }
 
     /**
-     * 
+     * @param <Source>         源对象类型
+     * @param <Target>         目标对象类型
      * @param source           源对象
      * @param target           目标对象
      * @param ignoreConditions 拷贝忽略条件
+     * 
      * @see CopyIgnore
      */
-    public static <Target, Source> void copy(Source source, Target target, String ignoreConditions) {
-        copy(source, target, ignoreConditions, false);
+    public static <Target, Source> void copy(Source source, Target target, String[] ignoreConditions) {
+        copy(source, target, false, ignoreConditions);
     }
 
     /**
-     * 
+     * @param <Source>         源对象类型
+     * @param <Target>         目标对象类型
      * @param source           源对象
      * @param target           目标对象
-     * @param ignoreConditions 拷贝忽略条件
      * @param ignoreNull       是否忽略null值
+     * @param ignoreConditions 拷贝忽略条件
+     * 
      * @see CopyIgnore
      */
-    public static <Target, Source> void copy(Source source, Target target, String ignoreConditions,
-            boolean ignoreNull) {
+    public static <Target, Source> void copy(Source source, Target target, boolean ignoreNull,
+            String[] ignoreConditions) {
         if (target == null) {
             throw new IllegalArgumentException("Target object is null");
         }
-        doCopy(source, target, ignoreConditions, ignoreNull);
+        doCopy(source, target, ignoreNull, ignoreConditions);
     }
 
     /**
-     * 
+     * @param <Source> 源对象类型
+     * @param <Target> 目标对象类型
      * @param source   源对象
      * @param tarClass 目标对象类对象
      * @return 目标对象
      */
     public static <Target, Source> Target copy(Source source, Class<Target> tarClass) {
-        return copy(source, tarClass, null, false);
+        return copy(source, tarClass, false, null);
     }
 
     /**
-     * 
+     * @param <Source>   源对象类型
+     * @param <Target>   目标对象类型
      * @param source     源对象
      * @param tarClass   目标对象类对象
      * @param ignoreNull 是否忽略null值
      * @return 目标对象
      */
     public static <Target, Source> Target copy(Source source, Class<Target> tarClass, boolean ignoreNull) {
-        return copy(source, tarClass, null, ignoreNull);
+        return copy(source, tarClass, ignoreNull, null);
     }
 
     /**
-     * 
+     * @param <Source>         源对象类型
+     * @param <Target>         目标对象类型
      * @param source           源对象
      * @param tarClass         目标对象类对象
      * @param ignoreConditions 拷贝忽略条件
      * @return 目标对象
      */
-    public static <Target, Source> Target copy(Source source, Class<Target> tarClass, String ignoreConditions) {
-        return copy(source, tarClass, ignoreConditions, false);
+    public static <Target, Source> Target copy(Source source, Class<Target> tarClass, String[] ignoreConditions) {
+        return copy(source, tarClass, false, ignoreConditions);
     }
 
     /**
-     * 
+     * @param <Source>         源对象类型
+     * @param <Target>         目标对象类型
      * @param source           源对象
      * @param tarClass         目标对象类对象
      * @param ignoreConditions 拷贝忽略条件
      * @param ignoreNull       是否忽略null值
      * @return 目标对象
      */
-    public static <Target, Source> Target copy(Source source, Class<Target> tarClass, String ignoreConditions,
-            boolean ignoreNull) {
+    public static <Target, Source> Target copy(Source source, Class<Target> tarClass, boolean ignoreNull,
+            String[] ignoreConditions) {
         if (source == null) {
             return null;
         }
@@ -160,34 +173,37 @@ public class BeanCopyUtils {
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
-        copy(source, target, ignoreConditions, ignoreNull);
+        copy(source, target, ignoreNull, ignoreConditions);
         return target;
     }
 
     /**
-     * 
+     * @param <Source> 源对象类型
+     * @param <Target> 目标对象类型
      * @param srcList  源对象List
      * @param tarClass 目标对象类对象
      * @return 目标对象List
      */
     public static <Target, Source> List<Target> copyList(List<Source> srcList, Class<Target> tarClass) {
-        return copyList(srcList, tarClass, null, false);
+        return copyList(srcList, tarClass, false, null);
     }
 
     /**
-     * 
+     * @param <Source>         源对象类型
+     * @param <Target>         目标对象类型
      * @param srcList          源对象List
      * @param tarClass         目标对象类对象
      * @param ignoreConditions 拷贝忽略条件
      * @return 目标对象List
      */
     public static <Target, Source> List<Target> copyList(List<Source> srcList, Class<Target> tarClass,
-            String ignoreConditions) {
-        return copyList(srcList, tarClass, ignoreConditions, false);
+            String[] ignoreConditions) {
+        return copyList(srcList, tarClass, false, ignoreConditions);
     }
 
     /**
-     * 
+     * @param <Source>   源对象类型
+     * @param <Target>   目标对象类型
      * @param srcList    源对象List
      * @param tarClass   目标对象类对象
      * @param ignoreNull 是否忽略null值
@@ -195,11 +211,12 @@ public class BeanCopyUtils {
      */
     public static <Target, Source> List<Target> copyList(List<Source> srcList, Class<Target> tarClass,
             boolean ignoreNull) {
-        return copyList(srcList, tarClass, null, ignoreNull);
+        return copyList(srcList, tarClass, ignoreNull, null);
     }
 
     /**
-     * 
+     * @param <Source>         源对象类型
+     * @param <Target>         目标对象类型
      * @param srcList          源对象List
      * @param tarClass         目标对象类对象
      * @param ignoreConditions 拷贝忽略条件
@@ -208,7 +225,7 @@ public class BeanCopyUtils {
      */
     @SuppressWarnings("unchecked")
     public static <Target, Source> List<Target> copyList(List<Source> srcList, Class<Target> tarClass,
-            String ignoreConditions, boolean ignoreNull) {
+            boolean ignoreNull, String[] ignoreConditions) {
         List<Target> tarList = new ArrayList<>();
         if (srcList == null) {
             return null;
@@ -219,7 +236,7 @@ public class BeanCopyUtils {
                 if (isPrimitive) {
                     tarList.add((Target) src);
                 } else {
-                    tarList.add((Target) doCopy(src, tarClass.newInstance(), ignoreConditions, ignoreNull));
+                    tarList.add((Target) doCopy(src, tarClass.newInstance(), ignoreNull, ignoreConditions));
                 }
             } catch (InstantiationException e) {
                 e.printStackTrace();
@@ -233,10 +250,10 @@ public class BeanCopyUtils {
     }
 
     /**
-     * 判断是否是基本类型(包含String, Date和Enum类型)
+     * 判断是否是基本类型(包含{@code String}, {@code Date}和{@code Enum}类型)
      *
      * @param clazz 类对象
-     * @return {@code true} 或 {@code false}
+     * @return {@code true}或{@code false}
      */
     private static boolean isPrimitive(Class<?> clazz) {
         boolean result = false;
@@ -262,47 +279,57 @@ public class BeanCopyUtils {
      * @param ignoreConditions 忽略条件
      * @return {@code true} 或 {@code false}
      */
-    private static boolean shouldIgnore(Annotation copyIgnore, String ignoreConditions) {
+    private static boolean shouldIgnore(CopyIgnore copyIgnore, String[] ignoreConditions) {
         boolean ignore = false;
         if (copyIgnore == null) {
             return ignore;
         }
-        List<String> whenList = Arrays.asList(((CopyIgnore) copyIgnore).when());
-        boolean whenListEmpty = whenList.size() == 1 && "".equals(whenList.get(0));
-        List<String> exceptList = Arrays.asList(((CopyIgnore) copyIgnore).except());
-        boolean exceptListEmpty = exceptList.size() == 1 && "".equals(exceptList.get(0));
-        if (whenListEmpty && exceptListEmpty) {
+        String[] whenConditions = copyIgnore.when();
+        boolean whenConditionsEmpty = whenConditions.length == 1 && "".equals(whenConditions[0]);
+        String[] exceptConditions = copyIgnore.except();
+        boolean exceptConditionsEmpty = exceptConditions.length == 1 && "".equals(exceptConditions[0]);
+
+        if (whenConditionsEmpty && exceptConditionsEmpty) {
             ignore = true;
-        } else if (StringUtils.isNotBlank(ignoreConditions)) {
-            if (!whenListEmpty) {
-                ignore = false;
-                for (String s : whenList) {
-                    if (ignoreConditions.contains(s)) {
-                        ignore = true;
-                        break;
-                    }
-                }
+        } else {
+            if (!whenConditionsEmpty) {
+                ignore = hasCondition(whenConditions, ignoreConditions) ? true : false;
             }
-            if (!exceptListEmpty) {
-                ignore = true;
-                for (String s : exceptList) {
-                    if (ignoreConditions.contains(s)) {
-                        ignore = false;
-                        break;
-                    }
-                }
+            if (!exceptConditionsEmpty) {
+                ignore = hasCondition(exceptConditions, ignoreConditions) ? false : true;
             }
         }
         return ignore;
     }
 
+    private static boolean hasCondition(String[] annotationValue, String[] ignoreConditions) {
+        if (ignoreConditions == null || ignoreConditions.length == 0) {
+            return false;
+        }
+        for (String s1 : annotationValue) {
+            for (String s2 : ignoreConditions) {
+                if (s1.equals(s2)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
-     * 递归方法
+     * 执行实际的拷贝过程
      * 
+     * @param <Source> 源对象类型
+     * @param <Target> 目标对象类型
+     * @param source
+     * @param target
+     * @param ignoreNull
+     * @param ignoreConditions
+     * @return
      */
     @SuppressWarnings("unchecked")
-    private static <Target, Source> Target doCopy(Source source, Target target, String ignoreConditions,
-            boolean ignoreNull) {
+    private static <Target, Source> Target doCopy(Source source, Target target, boolean ignoreNull,
+            String[] ignoreConditions) {
         if (source == null) {
             return null;
         }
@@ -326,7 +353,7 @@ public class BeanCopyUtils {
                         FieldReader fieldReader = getFieldReaderWithCache(srcClass, tarFieldName, srcCache);
                         if (fieldReader != null) {
                             FieldWriter fieldWriter = getFieldWriterWithCache(tarClass, tarFieldName, tarCache);
-                            fieldWriter.write(target, fieldReader.read(source), ignoreConditions, ignoreNull);
+                            fieldWriter.write(target, fieldReader.read(source), ignoreNull, ignoreConditions);
                         }
                     }
                 }
@@ -342,7 +369,7 @@ public class BeanCopyUtils {
                         FieldWriter fieldWriter = getFieldWriterWithCache(tarClass, tarFieldName, tarCache);
                         if (fieldReader != null) {
                             // 由于这里立刻就进行写操作, 会中断后续的缓存
-                            fieldWriter.write(target, fieldReader.read(source), ignoreConditions, ignoreNull);
+                            fieldWriter.write(target, fieldReader.read(source), ignoreNull, ignoreConditions);
                         }
                     } else {
                         FieldReader fieldReader = getFieldReaderWithoutCache(srcClass, tarFieldName, null);
@@ -357,11 +384,11 @@ public class BeanCopyUtils {
                             } else if (tarFieldClass == List.class) {
                                 // 如果是List类型
                                 tarField.set(target, copyList((List<?>) value, getFieldGenericType(tarField),
-                                        ignoreConditions, ignoreNull));
+                                        ignoreNull, ignoreConditions));
                             } else {
                                 // 如果是其他引用类型
                                 tarField.set(target, BeanCopyUtils.doCopy(value, tarFieldClass.newInstance(),
-                                        ignoreConditions, ignoreNull));
+                                        ignoreNull, ignoreConditions));
                             }
                         }
                     }
@@ -386,18 +413,28 @@ public class BeanCopyUtils {
         expungeStaleEntries();
         CacheReference ref = cacheMap.get(clazz);
         if (ref == null || ref.get() == null) {
-            ref = new CacheReference(clazz, referenceQueue);
-            cacheMap.put(clazz, ref);
+           newCacheFor(clazz);
         }
+        ref = cacheMap.get(clazz);
         return ref.get();
     }
 
+    private static void newCacheFor(Class<?> clazz) {
+        synchronized (clazz) {
+            CacheReference ref = cacheMap.get(clazz);
+            if (ref == null || ref.get() == null) {
+                ref = new CacheReference(clazz, referenceQueue);
+                cacheMap.put(clazz, ref);
+            }
+        } 
+    }
+
     private static void expungeStaleEntries() {
-        for (Object collected; (collected = referenceQueue.poll()) != null; ) {
+        for (Object collected; (collected = referenceQueue.poll()) != null;) {
             synchronized (referenceQueue) {
                 // @SuppressWarnings("unchecked")
                 CacheReference ref = (CacheReference) collected;
-                cacheMap.remove(ref.clazz);
+                cacheMap.remove(ref.getCachedClass());
             }
         }
     }
@@ -529,7 +566,7 @@ public class BeanCopyUtils {
     }
 
     private static FieldWriter getFieldWriterWithCache(Class<?> tarClass, String fieldName, Cache cache) {
-        FieldWriter writeMethod = (t, v, i, in) -> {
+        FieldWriter writeMethod = (t, v, in, i) -> {
         };
         if (cache.getFieldWriterMap() == null) {
             cache.setFieldWriterMap(new HashMap<>());
@@ -548,7 +585,7 @@ public class BeanCopyUtils {
     private static FieldWriter getFieldWriterWithoutCache(Class<?> tarClass, String fieldName,
             MethodAccess methodAccess) {
         Field field = null;
-        FieldWriter fieldWriter = (t, v, i, in) -> {
+        FieldWriter fieldWriter = (t, v, in, i) -> {
         };
         try {
             for (Field f : getAllValidFields(tarClass)) {
@@ -582,18 +619,18 @@ public class BeanCopyUtils {
             if (index != -1) {
                 final int methodIndex = index;
                 if (isPrimitive(fieldClass)) {
-                    fieldWriter = (t, v, i, in) -> {
-                        invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, i, in);
+                    fieldWriter = (t, v, in, i) -> {
+                        invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, in, i);
                     };
                 } else if (fieldClass.equals(List.class)) {
-                    fieldWriter = (t, v, i, in) -> {
-                        v = copyList((List<?>) v, getFieldGenericType(f), i, in);
-                        invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, i, in);
+                    fieldWriter = (t, v, in, i) -> {
+                        v = copyList((List<?>) v, getFieldGenericType(f), in, i);
+                        invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, in, i);
                     };
                 } else {
-                    fieldWriter = (t, v, i, in) -> {
-                        v = copy(v, fieldClass, i, in);
-                        invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, i, in);
+                    fieldWriter = (t, v, in, i) -> {
+                        v = copy(v, fieldClass, in, i);
+                        invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, in, i);
                     };
                 }
 
@@ -603,16 +640,16 @@ public class BeanCopyUtils {
             for (Method method : methods) {
                 if (method.getName().equals("set" + methodNameSuffix)) {
                     if (isPrimitive(fieldClass)) {
-                        fieldWriter = (t, v, i, in) -> invokeSetMethod(method, t, v, copyIgnore, i, in);
+                        fieldWriter = (t, v, in, i) -> invokeSetMethod(method, t, v, copyIgnore, in, i);
                     } else if (fieldClass.equals(List.class)) {
-                        fieldWriter = (t, v, i, in) -> {
-                            v = copyList((List<?>) v, getFieldGenericType(f), i, in);
-                            invokeSetMethod(method, t, v, copyIgnore, i, in);
+                        fieldWriter = (t, v, in, i) -> {
+                            v = copyList((List<?>) v, getFieldGenericType(f), in, i);
+                            invokeSetMethod(method, t, v, copyIgnore, in, i);
                         };
                     } else {
-                        fieldWriter = (t, v, i, in) -> {
-                            v = copy(v, fieldClass, i, in);
-                            invokeSetMethod(method, t, v, copyIgnore, i, in);
+                        fieldWriter = (t, v, in, i) -> {
+                            v = copy(v, fieldClass, in, i);
+                            invokeSetMethod(method, t, v, copyIgnore, in, i);
                         };
                     }
                     hasWriteMethod = true;
@@ -624,16 +661,16 @@ public class BeanCopyUtils {
             try {
                 f.setAccessible(true);
                 if (isPrimitive(fieldClass)) {
-                    fieldWriter = (t, v, i, in) -> setFieldValue(f, t, v, copyIgnore, i, in);
+                    fieldWriter = (t, v, in, i) -> setFieldValue(f, t, v, copyIgnore, in, i);
                 } else if (fieldClass.equals(List.class)) {
-                    fieldWriter = (t, v, i, in) -> {
-                        v = copyList((List<?>) v, getFieldGenericType(f), i, in);
-                        setFieldValue(f, t, v, copyIgnore, i, in);
+                    fieldWriter = (t, v, in, i) -> {
+                        v = copyList((List<?>) v, getFieldGenericType(f), in, i);
+                        setFieldValue(f, t, v, copyIgnore, in, i);
                     };
                 } else {
-                    fieldWriter = (t, v, i, in) -> {
-                        v = copy(v, fieldClass, i, in);
-                        setFieldValue(f, t, v, copyIgnore, i, in);
+                    fieldWriter = (t, v, in, i) -> {
+                        v = copy(v, fieldClass, in, i);
+                        setFieldValue(f, t, v, copyIgnore, in, i);
                     };
                 }
 
@@ -645,7 +682,7 @@ public class BeanCopyUtils {
     }
 
     private static void invokeMethodAccess(MethodAccess methodAccess, int methodIndex, Object target, Object value,
-            CopyIgnore copyIgnore, String ignoreConditions, boolean ignoreNull) {
+            CopyIgnore copyIgnore, boolean ignoreNull, String[] ignoreConditions) {
         if (shouldIgnore(copyIgnore, ignoreConditions) || (value == null && ignoreNull)) {
             return;
         }
@@ -654,7 +691,7 @@ public class BeanCopyUtils {
     }
 
     private static void invokeSetMethod(Method method, Object target, Object value, CopyIgnore copyIgnore,
-            String ignoreConditions, boolean ignoreNull) {
+            boolean ignoreNull, String[] ignoreConditions) {
         try {
             if (shouldIgnore(copyIgnore, ignoreConditions) || (value == null && ignoreNull)) {
                 return;
@@ -666,7 +703,7 @@ public class BeanCopyUtils {
     }
 
     private static void setFieldValue(Field field, Object target, Object value, CopyIgnore copyIgnore,
-            String ignoreConditions, boolean ignoreNull) {
+            boolean ignoreNull, String[] ignoreConditions) {
         try {
             if (shouldIgnore(copyIgnore, ignoreConditions) || (value == null && ignoreNull)) {
                 return;
@@ -686,41 +723,6 @@ public class BeanCopyUtils {
             superClass = superClass.getSuperclass();
         }
         return methods;
-    }
-
-    private static class CacheReference extends SoftReference<Cache> {
-
-        private Class<?> clazz;
-
-        public CacheReference(Class<?> clazz, ReferenceQueue<Cache> referenceQueue) {
-            super(new Cache(clazz), referenceQueue);
-            this.clazz = clazz;
-        }
-
-    }
-
-    @Data
-    private static class Cache {
-
-        private Cache(Class<?> clazz) {
-            this.clazz = clazz;
-            this.methodAccess = MethodAccess.get(clazz);
-        }
-
-        private Class<?> clazz;
-        private MethodAccess methodAccess;
-        private List<Field> fields;
-        private HashMap<String, FieldReader> fieldReaderMap;
-        private HashMap<String, FieldWriter> fieldWriterMap;
-
-    }
-
-    private interface FieldReader {
-        Object read(Object source);
-    }
-
-    private interface FieldWriter {
-        void write(Object target, Object value, String ignoreConditions, boolean ignoreNull);
     }
 
 }

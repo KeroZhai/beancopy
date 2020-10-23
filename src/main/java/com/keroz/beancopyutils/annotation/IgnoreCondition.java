@@ -14,6 +14,8 @@ import java.lang.annotation.Target;
  * @IgnoreCondition
  * public static final String COPY_NAME_ONLY = "copyNameOnly";}
  * </pre>
+ * 
+ * 由于忽略条件会在拷贝时进行比较，因此可能需要保证字符串内容的唯一性。
  */
 @Documented
 @Target(ElementType.FIELD)
