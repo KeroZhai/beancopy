@@ -32,7 +32,8 @@ public abstract class AbstractCachedCopier implements Copier {
         try {
             target = targetClass.newInstance();
         } catch (InstantiationException | IllegalAccessException e) {
-            e.printStackTrace();
+            throw new com.keroz.beancopyutils.exception.InstantiationException(
+                        "Failed to instantiate class: " + targetClass.getName(), e);
         }
         copy(source, target, ignoreNull, ignoreConditions);
         return target;
@@ -54,12 +55,9 @@ public abstract class AbstractCachedCopier implements Copier {
                 } else {
                     tarList.add((Target) copy(src, targetClass.newInstance(), ignoreNull, ignoreConditions));
                 }
-            } catch (InstantiationException e) {
-                e.printStackTrace();
+            } catch (InstantiationException | IllegalAccessException e) {
                 throw new com.keroz.beancopyutils.exception.InstantiationException(
-                        "Instantiate class failed: " + targetClass.getName());
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
+                        "Failed to instantiate class: " + targetClass.getName(), e);
             }
         }
         return tarList;
