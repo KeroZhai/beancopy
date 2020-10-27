@@ -119,8 +119,10 @@ public abstract class AbstractCachedCopier implements Copier {
         expungeStaleEntries();
         CacheReference ref = cacheMap.get(clazz);
         if (ref == null || ref.get() == null) {
+            // 如果竞争锁失败，表示已经有线程正在初始化缓存
             synchronized (clazz) {
                 ref = cacheMap.get(clazz);
+                // 再次判断
                 if (ref == null || ref.get() == null) {
                     ref = new CacheReference(newCacheFor(clazz), referenceQueue);
                     cacheMap.put(clazz, ref);

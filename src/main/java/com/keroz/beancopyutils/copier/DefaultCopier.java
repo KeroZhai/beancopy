@@ -11,7 +11,9 @@ import com.keroz.beancopyutils.annotation.CopyIgnore;
 import com.keroz.beancopyutils.reflection.ReflectionUtils;
 
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class DefaultCopier extends AbstractCachedCopier {
 
     private static interface FieldReader {
@@ -85,6 +87,7 @@ public class DefaultCopier extends AbstractCachedCopier {
         synchronized (cache) {
             HashMap<String, FieldReader> readMethodMap = cache.getFieldReaderMap();
             if (!readMethodMap.containsKey(fieldName)) {
+                log.debug(Thread.currentThread().getName() + " is initiating field reader for " + srcClass.getName() + "." + fieldName);
                 FieldReader fieldReader = getFieldReaderWithoutCache(srcClass, fieldName, cache.getMethodAccess());
                 if (fieldReader != null) {
                     readMethodMap.put(fieldName, fieldReader);
@@ -182,6 +185,7 @@ public class DefaultCopier extends AbstractCachedCopier {
             HashMap<String, FieldWriter> writeMethodMap = cache.getFieldWriterMap();
             // 尝试从缓存中获取
             if (!writeMethodMap.containsKey(fieldName)) {
+                log.debug(Thread.currentThread().getName() + " is initiating field writer for " + tarClass.getName() + "." + fieldName);
                 writeMethodMap.put(fieldName, getFieldWriterWithoutCache(tarClass, field, cache.getMethodAccess()));
             }
         }
@@ -313,6 +317,7 @@ public class DefaultCopier extends AbstractCachedCopier {
 
     @Override
     protected Cache newCacheFor(Class<?> clazz) {
+        log.debug(Thread.currentThread().getName() + " is initiating cache for " + clazz.getName());
         return new DefaultCache(clazz);
     }
 
