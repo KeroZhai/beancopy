@@ -232,12 +232,16 @@ public class DefaultCopier extends AbstractCachedCopier {
                     };
                 } else if (fieldClass.equals(List.class)) {
                     fieldWriter = (t, v, in, i) -> {
-                        v = copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in, i);
+                        if (c == null) {
+                            v = copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in, i);
+                        }
                         invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, c, in, i);
                     };
                 } else {
                     fieldWriter = (t, v, in, i) -> {
-                        v = copy(v, fieldClass, in, i);
+                        if (c == null) {
+                            v = copy(v, fieldClass, in, i);
+                        }
                         invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, c, in, i);
                     };
                 }
@@ -253,12 +257,16 @@ public class DefaultCopier extends AbstractCachedCopier {
                         };
                     } else if (fieldClass.equals(List.class)) {
                         fieldWriter = (t, v, in, i) -> {
-                            v = copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in, i);
+                            if (c == null) {
+                                v = copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in, i);
+                            }
                             invokeSetMethod(method, t, v, copyIgnore, c, in, i);
                         };
                     } else {
                         fieldWriter = (t, v, in, i) -> {
-                            v = copy(v, fieldClass, in, i);
+                            if (c == null) {
+                                v = copy(v, fieldClass, in, i);
+                            }
                             invokeSetMethod(method, t, v, copyIgnore, c, in, i);
                         };
                     }
@@ -276,12 +284,16 @@ public class DefaultCopier extends AbstractCachedCopier {
                     };
                 } else if (fieldClass.equals(List.class)) {
                     fieldWriter = (t, v, in, i) -> {
-                        v = copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in, i);
+                        if (c == null) {
+                            v = copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in, i);
+                        }
                         setFieldValue(field, t, v, copyIgnore, c, in, i);
                     };
                 } else {
                     fieldWriter = (t, v, in, i) -> {
-                        v = copy(v, fieldClass, in, i);
+                        if (c == null) {
+                            v = copy(v, fieldClass, in, i);
+                        }
                         setFieldValue(field, t, v, copyIgnore, c, in, i);
                     };
                 }
