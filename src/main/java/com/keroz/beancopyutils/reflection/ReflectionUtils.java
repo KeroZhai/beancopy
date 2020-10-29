@@ -10,8 +10,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.keroz.beancopyutils.annotation.IgnoreCondition;
-
 public class ReflectionUtils {
 
     /**
@@ -40,10 +38,17 @@ public class ReflectionUtils {
         }).collect(Collectors.toList());
     }
 
+    public static List<ExtendedField> getAllValidFieldWrappers(Class<?> clazz) {
+        return getAllFields(clazz).stream().filter(field -> {
+            int mod = field.getModifiers();
+            return (mod & Modifier.FINAL) == 0 && (mod & Modifier.STATIC) == 0;
+        }).map(ExtendedField::new).collect(Collectors.toList());
+    }
+
     /**
      * 获取泛型类型
      */
-    public static Class<?> getFieldGenericType(Field field) {
+    public static Class<?> getFieldGenericType(ExtendedField field) {
         ParameterizedType type = (ParameterizedType) field.getGenericType();
         return (Class<?>) type.getActualTypeArguments()[0];
     }
