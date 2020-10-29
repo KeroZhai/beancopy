@@ -41,23 +41,24 @@ public class IgnoreConditionTest {
     @Data
     @ToString
     public static class Target2 {
+
+        public static final String COPY_WITHOUT_NAME = "copyTarget2WithoutName";
+
         private int id;
+        @CopyIgnore(when = COPY_WITHOUT_NAME)
         private String name;
     }
 
     @Test
     public void testIgnoreWhen() {
         System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class));
-        System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class, new String[] {
-            Target1.COPY_WITHOUT_ID
-        }));
+        System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class,
+                new String[] { Target1.COPY_WITHOUT_ID, Target2.COPY_WITHOUT_NAME }));
     }
 
     @Test
     public void testIgnoreExcept() {
         System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class));
-        System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class, new String[] {
-            Target1.COPY_WITH_NAME
-        }));
+        System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class, new String[] { Target1.COPY_WITH_NAME }));
     }
 }
