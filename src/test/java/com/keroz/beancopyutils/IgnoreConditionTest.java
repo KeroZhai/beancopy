@@ -1,7 +1,6 @@
 package com.keroz.beancopyutils;
 
 import com.keroz.beancopyutils.annotation.CopyIgnore;
-import com.keroz.beancopyutils.annotation.IgnoreCondition;
 
 import org.junit.jupiter.api.Test;
 
