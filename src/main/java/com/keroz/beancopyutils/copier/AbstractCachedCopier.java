@@ -70,8 +70,7 @@ public abstract class AbstractCachedCopier implements Copier {
      * @param ignoreConditions 忽略条件
      * @return {@code true} 或 {@code false}
      */
-    protected final boolean shouldIgnore(CopyIgnore copyIgnore, String[] ignoreConditions, Object value,
-            boolean ignoreNull) {
+    protected final boolean shouldIgnore(CopyIgnore copyIgnore, String[] ignoreConditions) {
         boolean ignore = false;
         if (copyIgnore != null) {
             String[] whenConditions = copyIgnore.when();
@@ -90,7 +89,7 @@ public abstract class AbstractCachedCopier implements Copier {
                 }
             }
         }
-        return ignore || (value == null && ignoreNull);
+        return ignore;
     }
 
     protected final boolean hasCondition(String[] annotationValue, String[] ignoreConditions) {

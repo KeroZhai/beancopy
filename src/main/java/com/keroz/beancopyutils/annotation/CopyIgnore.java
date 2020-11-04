@@ -11,7 +11,9 @@ import java.lang.annotation.Target;
  * annotated field in a <strong>target</strong> class should be ignored (during
  * copying).
  * <p>
- * The annotated field will always be ignored if no attributes are provided.
+ * The annotated field will always be ignored if no attributes are provided,
+ * however, it is meaningless to do so. Instead, you should directly remove the
+ * unwanted fileds.
  * <p>
  * The example below shows how to use this annotation.
  * 
@@ -32,15 +34,14 @@ import java.lang.annotation.Target;
  * by providing an array when copying.
  * 
  * <pre>
- * {
- *     &#64;code
- *     Foo source = new Foo();
- *     source.id = 1;
- *     source.name = "foo";
- *     Foo target0 = BeanCopyUtils.copy(source, Foo.class);
- *     Foo target1 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID });
- *     Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITH_NAME });
- *     Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID, Foo.COPY_WITH_NAME });
+ * {@code
+ * Foo source = new Foo();
+ * source.id = 1;
+ * source.name = "foo";
+ * Foo target0 = BeanCopyUtils.copy(source, Foo.class);
+ * Foo target1 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID });
+ * Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITH_NAME });
+ * Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID, Foo.COPY_WITH_NAME });
  * }
  * </pre>
  * 

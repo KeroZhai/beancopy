@@ -15,15 +15,51 @@ import com.keroz.beancopyutils.reflection.ReflectionUtils;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * The default copier used by {@code BeanCopyUtils}.
+ * <p>
+ * This copier class uses a mechanism of field readers and field writers. For
+ * each field there is a field reader and a field writer, which will be cached.
+ * A field reader or a field writer will be generated only when it's needed,
+ * that's to say, a field reader/writer is generated only when getting/setting
+ * its value.
+ * 
+ */
 @Slf4j
 public class DefaultCopier extends AbstractCachedCopier {
 
+    /**
+     * A reader for a certain filed in a source class.
+     */
     private static interface FieldReader {
+        /**
+         * Reads the field value from a source object.
+         * 
+         * @param source the source object to read from
+         * @return the field value
+         */
         Object read(Object source);
     }
 
+    /**
+     * A writer for a certain filed in a target class.
+     */
     private static interface FieldWriter {
-        void write(Object target, Object value, boolean ignoreNull, String[] ignoreConditions);
+        /**
+         * Writes the field value into a target object.
+         * 
+         * @param target           the target object to write into
+         * @param source           the source object to read from
+         * @param fieldReader      the field reader for the field
+         * @param ignoreNull       whether ignore null source value or not
+         * @param ignoreConditions ignore conditions
+         */
+        void write(Object target, Object source, FieldReader fieldReader, boolean ignoreNull,
+                String[] ignoreConditions);
+    }
+
+    private static interface RawValueProcessor {
+        Object preocess(Object source);
     }
 
     @Data
@@ -58,7 +94,7 @@ public class DefaultCopier extends AbstractCachedCopier {
             FieldReader fieldReader = getFieldReader(srcClass, targetField.getAliasFor(), srcCache);
             FieldWriter fieldWriter = getFieldWriter(tarClass, targetField, tarCache);
             if (fieldReader != null) {
-                fieldWriter.write(target, fieldReader.read(source), ignoreNull, ignoreConditions);
+                fieldWriter.write(target, source, fieldReader, ignoreNull, ignoreConditions);
             }
         }
 
@@ -72,25 +108,22 @@ public class DefaultCopier extends AbstractCachedCopier {
      * @param fieldName 字段名
      */
     private FieldReader getFieldReader(Class<?> srcClass, String fieldName, DefaultCache cache) {
-        if (cache == null) {
-            return getFieldReaderWithoutCache(srcClass, fieldName, null);
-        }
         HashMap<String, FieldReader> readMethodMap = cache.getFieldReaderMap();
         // 尝试从缓存中获取读方法
         if (!readMethodMap.containsKey(fieldName)) {
-            newFieldReader(srcClass, fieldName, cache);
+            generateFieldReader(srcClass, fieldName, cache);
         }
         return readMethodMap.get(fieldName);
 
     }
 
-    private void newFieldReader(Class<?> srcClass, String fieldName, DefaultCache cache) {
+    private void generateFieldReader(Class<?> srcClass, String fieldName, DefaultCache cache) {
         synchronized (cache) {
             HashMap<String, FieldReader> readMethodMap = cache.getFieldReaderMap();
             if (!readMethodMap.containsKey(fieldName)) {
-                log.debug(Thread.currentThread().getName() + " is initiating field reader for " + srcClass.getName()
+                log.debug(Thread.currentThread().getName() + " is generating field reader for " + srcClass.getName()
                         + "." + fieldName);
-                FieldReader fieldReader = getFieldReaderWithoutCache(srcClass, fieldName, cache.getMethodAccess());
+                FieldReader fieldReader = newFieldReader(srcClass, fieldName, cache.getMethodAccess());
                 if (fieldReader != null) {
                     readMethodMap.put(fieldName, fieldReader);
                 }
@@ -98,7 +131,7 @@ public class DefaultCopier extends AbstractCachedCopier {
         }
     }
 
-    private FieldReader getFieldReaderWithoutCache(Class<?> srcClass, String fieldName, MethodAccess methodAccess) {
+    private FieldReader newFieldReader(Class<?> srcClass, String fieldName, MethodAccess methodAccess) {
         FieldReader fieldReader = null;
         String methodNameSuffix = getMethodNameSuffix(fieldName);
         boolean hasReadMethod = false;
@@ -172,30 +205,29 @@ public class DefaultCopier extends AbstractCachedCopier {
         String fieldName = field.getName();
         HashMap<String, FieldWriter> writeMethodMap = cache.getFieldWriterMap();
         if (!writeMethodMap.containsKey(fieldName)) {
-            newFieldWriter(tarClass, field, cache);
+            generateFieldWriter(tarClass, field, cache);
         }
 
         return writeMethodMap.get(fieldName);
     }
 
-    private void newFieldWriter(Class<?> tarClass, ExtendedField field, DefaultCache cache) {
+    private void generateFieldWriter(Class<?> tarClass, ExtendedField field, DefaultCache cache) {
         synchronized (cache) {
             String fieldName = field.getName();
             HashMap<String, FieldWriter> writeMethodMap = cache.getFieldWriterMap();
             // 尝试从缓存中获取
             if (!writeMethodMap.containsKey(fieldName)) {
-                log.debug(Thread.currentThread().getName() + " is initiating field writer for " + tarClass.getName()
+                log.debug(Thread.currentThread().getName() + " is generating field writer for " + tarClass.getName()
                         + "." + fieldName);
-                writeMethodMap.put(fieldName, getFieldWriterWithoutCache(tarClass, field, cache.getMethodAccess()));
+                writeMethodMap.put(fieldName, newFieldWriter(tarClass, field, cache.getMethodAccess()));
             }
         }
 
     }
 
-    private FieldWriter getFieldWriterWithoutCache(Class<?> tarClass, final ExtendedField field,
-            MethodAccess methodAccess) {
+    private FieldWriter newFieldWriter(Class<?> tarClass, final ExtendedField field, MethodAccess methodAccess) {
 
-        FieldWriter fieldWriter = (t, v, in, i) -> {
+        FieldWriter fieldWriter = (t, s, r, in, i) -> {
         };
 
         Class<?> fieldClass = field.getType();
@@ -226,23 +258,21 @@ public class DefaultCopier extends AbstractCachedCopier {
             }
             if (index != -1) {
                 final int methodIndex = index;
+
                 if (ReflectionUtils.isPrimitive(fieldClass)) {
-                    fieldWriter = (t, v, in, i) -> {
-                        invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, c, in, i);
+                    fieldWriter = (t, s, r, in, i) -> {
+                        invokeMethodAccess(methodAccess, methodIndex, t, s, r, c, null, copyIgnore, in, i);
                     };
                 } else if (fieldClass.equals(List.class)) {
-                    fieldWriter = (t, v, in, i) -> {
-                        if (c == null) {
-                            v = copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in, i);
-                        }
-                        invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, c, in, i);
+                    fieldWriter = (t, s, r, in, i) -> {
+                        RawValueProcessor p = v -> copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in,
+                                i);
+                        invokeMethodAccess(methodAccess, methodIndex, t, s, r, c, p, copyIgnore, in, i);
                     };
                 } else {
-                    fieldWriter = (t, v, in, i) -> {
-                        if (c == null) {
-                            v = copy(v, fieldClass, in, i);
-                        }
-                        invokeMethodAccess(methodAccess, methodIndex, t, v, copyIgnore, c, in, i);
+                    fieldWriter = (t, s, r, in, i) -> {
+                        RawValueProcessor p = v -> copy(v, fieldClass, in, i);
+                        invokeMethodAccess(methodAccess, methodIndex, t, s, r, c, p, copyIgnore, in, i);
                     };
                 }
 
@@ -252,22 +282,19 @@ public class DefaultCopier extends AbstractCachedCopier {
             for (Method method : methods) {
                 if (method.getName().equals("set" + methodNameSuffix)) {
                     if (ReflectionUtils.isPrimitive(fieldClass)) {
-                        fieldWriter = (t, v, in, i) -> {
-                            invokeSetMethod(method, t, v, copyIgnore, c, in, i);
+                        fieldWriter = (t, s, r, in, i) -> {
+                            invokeSetMethod(method, t, s, r, c, null, copyIgnore, in, i);
                         };
                     } else if (fieldClass.equals(List.class)) {
-                        fieldWriter = (t, v, in, i) -> {
-                            if (c == null) {
-                                v = copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in, i);
-                            }
-                            invokeSetMethod(method, t, v, copyIgnore, c, in, i);
+                        fieldWriter = (t, s, r, in, i) -> {
+                            RawValueProcessor p = v -> copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field),
+                                    in, i);
+                            invokeSetMethod(method, t, s, r, c, p, copyIgnore, in, i);
                         };
                     } else {
-                        fieldWriter = (t, v, in, i) -> {
-                            if (c == null) {
-                                v = copy(v, fieldClass, in, i);
-                            }
-                            invokeSetMethod(method, t, v, copyIgnore, c, in, i);
+                        fieldWriter = (t, s, r, in, i) -> {
+                            RawValueProcessor p = v -> copy(v, fieldClass, in, i);
+                            invokeSetMethod(method, t, s, r, c, p, copyIgnore, in, i);
                         };
                     }
                     hasWriteMethod = true;
@@ -279,22 +306,19 @@ public class DefaultCopier extends AbstractCachedCopier {
             try {
                 field.setAccessible(true);
                 if (ReflectionUtils.isPrimitive(fieldClass)) {
-                    fieldWriter = (t, v, in, i) -> {
-                        setFieldValue(field, t, v, copyIgnore, c, in, i);
+                    fieldWriter = (t, s, r, in, i) -> {
+                        setFieldValue(field, t, s, r, c, null, copyIgnore, in, i);
                     };
                 } else if (fieldClass.equals(List.class)) {
-                    fieldWriter = (t, v, in, i) -> {
-                        if (c == null) {
-                            v = copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in, i);
-                        }
-                        setFieldValue(field, t, v, copyIgnore, c, in, i);
+                    fieldWriter = (t, s, r, in, i) -> {
+                        RawValueProcessor p = v -> copyList((List<?>) v, ReflectionUtils.getFieldGenericType(field), in,
+                                i);
+                        setFieldValue(field, t, s, r, c, p, copyIgnore, in, i);
                     };
                 } else {
-                    fieldWriter = (t, v, in, i) -> {
-                        if (c == null) {
-                            v = copy(v, fieldClass, in, i);
-                        }
-                        setFieldValue(field, t, v, copyIgnore, c, in, i);
+                    fieldWriter = (t, s, r, in, i) -> {
+                        RawValueProcessor p = v -> copy(v, fieldClass, in, i);
+                        setFieldValue(field, t, s, r, c, p, copyIgnore, in, i);
                     };
                 }
 
@@ -306,27 +330,36 @@ public class DefaultCopier extends AbstractCachedCopier {
     }
 
     @SuppressWarnings(value = { "rawtypes", "unchecked" })
-    private void invokeMethodAccess(MethodAccess methodAccess, int methodIndex, Object target, Object value,
-            CopyIgnore copyIgnore, Converter converter, boolean ignoreNull, String[] ignoreConditions) {
-        if (shouldIgnore(copyIgnore, ignoreConditions, value, ignoreNull)) {
-            return;
-        }
-        if (converter != null) {
-            value = converter.convert(value);
-        }
-        methodAccess.invoke(target, methodIndex, value);
-
+    private Object handle(Object source, FieldReader fieldReader, RawValueProcessor processor, Converter converter) {
+        Object value = fieldReader.read(source);
+        return converter != null ? converter.convert(value) : processor != null ? processor.preocess(value) : value;
     }
 
-    @SuppressWarnings(value = { "rawtypes", "unchecked" })
-    private void invokeSetMethod(Method method, Object target, Object value, CopyIgnore copyIgnore,
-            Converter converter, boolean ignoreNull, String[] ignoreConditions) {
+    @SuppressWarnings("rawtypes")
+    private void invokeMethodAccess(MethodAccess methodAccess, int methodIndex, Object target, Object source,
+            FieldReader fieldReader, Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore,
+            boolean ignoreNull, String[] ignoreConditions) {
+        if (shouldIgnore(copyIgnore, ignoreConditions)) {
+            return;
+        }
+        Object value = handle(source, fieldReader, processor, converter);
+        if (value == null && ignoreNull) {
+            return;
+        }
+        methodAccess.invoke(target, methodIndex, value);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private void invokeSetMethod(Method method, Object target, Object source, FieldReader fieldReader,
+            Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore, boolean ignoreNull,
+            String[] ignoreConditions) {
         try {
-            if (shouldIgnore(copyIgnore, ignoreConditions, value, ignoreNull)) {
+            if (shouldIgnore(copyIgnore, ignoreConditions)) {
                 return;
             }
-            if (converter != null) {
-                value = converter.convert(value);
+            Object value = handle(source, fieldReader, processor, converter);
+            if (value == null && ignoreNull) {
+                return;
             }
             method.invoke(target, value);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
@@ -334,15 +367,17 @@ public class DefaultCopier extends AbstractCachedCopier {
         }
     }
 
-    @SuppressWarnings(value = { "rawtypes", "unchecked" })
-    private void setFieldValue(ExtendedField field, Object target, Object value, CopyIgnore copyIgnore,
-            Converter converter, boolean ignoreNull, String[] ignoreConditions) {
+    @SuppressWarnings("rawtypes")
+    private void setFieldValue(ExtendedField field, Object target, Object source, FieldReader fieldReader,
+            Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore, boolean ignoreNull,
+            String[] ignoreConditions) {
         try {
-            if (shouldIgnore(copyIgnore, ignoreConditions, value, ignoreNull)) {
+            if (shouldIgnore(copyIgnore, ignoreConditions)) {
                 return;
             }
-            if (converter != null) {
-                value = converter.convert(value);
+            Object value = handle(source, fieldReader, processor, converter);
+            if (value == null && ignoreNull) {
+                return;
             }
             field.set(target, value);
         } catch (IllegalAccessException | IllegalArgumentException e) {
