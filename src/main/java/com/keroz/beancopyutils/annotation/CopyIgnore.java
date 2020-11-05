@@ -9,11 +9,11 @@ import java.lang.annotation.Target;
 /**
  * Indicates {@code when} or {@code except} a certain condition is met that the
  * annotated field in a <strong>target</strong> class should be ignored (during
- * copying).
+ * copying). A {@linkplain IgnorePolicy} can also be specified.
  * <p>
- * The annotated field will always be ignored if no attributes are provided,
- * however, it is meaningless to do so. Instead, you should directly remove the
- * unwanted fileds.
+ * At least one attribute must be provided, otherwise this annotation will have
+ * no effect. Futhermore, it can even be misleading, since a field annotated
+ * with {@code CopyIgnore} <i>may</i> never be ignored during copying.
  * <p>
  * The example below shows how to use this annotation.
  * 
@@ -30,18 +30,18 @@ import java.lang.annotation.Target;
  * }}
  * </pre>
  * 
- * The two {@code String} constants server as conditions, which can be specified
+ * The two {@code String} constants serve as conditions, which can be specified
  * by providing an array when copying.
  * 
  * <pre>
  * {@code
- * Foo source = new Foo();
- * source.id = 1;
- * source.name = "foo";
- * Foo target0 = BeanCopyUtils.copy(source, Foo.class);
- * Foo target1 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID });
- * Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITH_NAME });
- * Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID, Foo.COPY_WITH_NAME });
+ *     Foo source = new Foo();
+ *     source.id = 1;
+ *     source.name = "foo";
+ *     Foo target0 = BeanCopyUtils.copy(source, Foo.class);
+ *     Foo target1 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID });
+ *     Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITH_NAME });
+ *     Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID, Foo.COPY_WITH_NAME });
  * }
  * </pre>
  * 
@@ -57,6 +57,8 @@ import java.lang.annotation.Target;
  * It is recommanded to declare {@code String} condtions as
  * {@code public static} so that they will be ignored. It's also a good practice
  * to make them unique, otherwise, the result may not meet expectations.
+ * 
+ * @see IgnorePolicy
  */
 @Documented
 @Target(ElementType.FIELD)
@@ -66,5 +68,33 @@ public @interface CopyIgnore {
     String[] when() default "";
 
     String[] except() default "";
+
+    IgnorePolicy policy() default IgnorePolicy.DEFAULT;
+
+    /**
+     * Determines whether null or empty values should be ignored or not.
+     */
+    public static enum IgnorePolicy {
+        /**
+         * Ignore null values.
+         */
+        NULL,
+        /**
+         * Ignore empty values.
+         * <p>
+         * An empty string, array, collection or zero is all considered as an empty
+         * value, including null.
+         */
+        EMPTY,
+        /**
+         * Don't ignore empty values.
+         */
+        NONE,
+        /**
+         * Default value for the policy attribute in {@code CopyIgnore}, which means let
+         * copy methods specify the {@code IgnorePolicy}.
+         */
+        DEFAULT;
+    }
 
 }

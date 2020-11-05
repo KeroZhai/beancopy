@@ -8,6 +8,7 @@ import java.util.List;
 
 import com.esotericsoftware.reflectasm.MethodAccess;
 import com.keroz.beancopyutils.annotation.CopyIgnore;
+import com.keroz.beancopyutils.annotation.CopyIgnore.IgnorePolicy;
 import com.keroz.beancopyutils.converter.Converter;
 import com.keroz.beancopyutils.reflection.ExtendedField;
 import com.keroz.beancopyutils.reflection.ReflectionUtils;
@@ -51,10 +52,10 @@ public class DefaultCopier extends AbstractCachedCopier {
          * @param target           the target object to write into
          * @param source           the source object to read from
          * @param fieldReader      the field reader for the field
-         * @param ignoreNull       whether ignore null source value or not
+         * @param ignorePolicy       whether ignore null source value or not
          * @param ignoreConditions ignore conditions
          */
-        void write(Object target, Object source, FieldReader fieldReader, boolean ignoreNull,
+        void write(Object target, Object source, FieldReader fieldReader, IgnorePolicy ignorePolicy,
                 String[] ignoreConditions);
     }
 
@@ -80,7 +81,7 @@ public class DefaultCopier extends AbstractCachedCopier {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <Source, Target> Target copy(Source source, Target target, boolean ignoreNull, String[] ignoreConditions) {
+    public <Source, Target> Target copy(Source source, Target target, IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         Class<Source> srcClass = (Class<Source>) source.getClass();
         Class<Target> tarClass = (Class<Target>) target.getClass();
 
@@ -94,7 +95,7 @@ public class DefaultCopier extends AbstractCachedCopier {
             FieldReader fieldReader = getFieldReader(srcClass, targetField.getAliasFor(), srcCache);
             FieldWriter fieldWriter = getFieldWriter(tarClass, targetField, tarCache);
             if (fieldReader != null) {
-                fieldWriter.write(target, source, fieldReader, ignoreNull, ignoreConditions);
+                fieldWriter.write(target, source, fieldReader, ignorePolicy, ignoreConditions);
             }
         }
 
@@ -338,12 +339,12 @@ public class DefaultCopier extends AbstractCachedCopier {
     @SuppressWarnings("rawtypes")
     private void invokeMethodAccess(MethodAccess methodAccess, int methodIndex, Object target, Object source,
             FieldReader fieldReader, Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore,
-            boolean ignoreNull, String[] ignoreConditions) {
+            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         if (shouldIgnore(copyIgnore, ignoreConditions)) {
             return;
         }
         Object value = handle(source, fieldReader, processor, converter);
-        if (value == null && ignoreNull) {
+        if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
             return;
         }
         methodAccess.invoke(target, methodIndex, value);
@@ -351,14 +352,14 @@ public class DefaultCopier extends AbstractCachedCopier {
 
     @SuppressWarnings("rawtypes")
     private void invokeSetMethod(Method method, Object target, Object source, FieldReader fieldReader,
-            Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore, boolean ignoreNull,
+            Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore, IgnorePolicy ignorePolicy,
             String[] ignoreConditions) {
         try {
             if (shouldIgnore(copyIgnore, ignoreConditions)) {
                 return;
             }
             Object value = handle(source, fieldReader, processor, converter);
-            if (value == null && ignoreNull) {
+            if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
                 return;
             }
             method.invoke(target, value);
@@ -369,14 +370,14 @@ public class DefaultCopier extends AbstractCachedCopier {
 
     @SuppressWarnings("rawtypes")
     private void setFieldValue(ExtendedField field, Object target, Object source, FieldReader fieldReader,
-            Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore, boolean ignoreNull,
+            Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore, IgnorePolicy ignorePolicy,
             String[] ignoreConditions) {
         try {
             if (shouldIgnore(copyIgnore, ignoreConditions)) {
                 return;
             }
             Object value = handle(source, fieldReader, processor, converter);
-            if (value == null && ignoreNull) {
+            if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
                 return;
             }
             field.set(target, value);

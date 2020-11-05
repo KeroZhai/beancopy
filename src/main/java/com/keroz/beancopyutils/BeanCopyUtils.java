@@ -3,6 +3,7 @@ package com.keroz.beancopyutils;
 import java.util.List;
 
 import com.keroz.beancopyutils.annotation.CopyIgnore;
+import com.keroz.beancopyutils.annotation.CopyIgnore.IgnorePolicy;
 import com.keroz.beancopyutils.copier.Copier;
 import com.keroz.beancopyutils.copier.DefaultCopier;
 
@@ -23,7 +24,7 @@ public class BeanCopyUtils {
      * @param target   目标对象
      */
     public static <Target, Source> void copy(Source source, Target target) {
-        copy(source, target, false, null);
+        copy(source, target, null, null);
     }
 
     /**
@@ -35,8 +36,8 @@ public class BeanCopyUtils {
      * 
      * @see CopyIgnore
      */
-    public static <Target, Source> void copy(Source source, Target target, boolean ignoreNull) {
-        copy(source, target, ignoreNull, null);
+    public static <Target, Source> void copy(Source source, Target target, IgnorePolicy ignorePolicy) {
+        copy(source, target, ignorePolicy, null);
     }
 
     /**
@@ -49,7 +50,7 @@ public class BeanCopyUtils {
      * @see CopyIgnore
      */
     public static <Target, Source> void copy(Source source, Target target, String[] ignoreConditions) {
-        copy(source, target, false, ignoreConditions);
+        copy(source, target, null, ignoreConditions);
     }
 
     /**
@@ -62,9 +63,9 @@ public class BeanCopyUtils {
      * 
      * @see CopyIgnore
      */
-    public static <Target, Source> void copy(Source source, Target target, boolean ignoreNull,
+    public static <Target, Source> void copy(Source source, Target target, IgnorePolicy ignorePolicy,
             String[] ignoreConditions) {
-        doCopy(source, target, ignoreNull, ignoreConditions);
+        doCopy(source, target, ignorePolicy, ignoreConditions);
     }
 
     /**
@@ -75,7 +76,7 @@ public class BeanCopyUtils {
      * @return 目标对象
      */
     public static <Target, Source> Target copy(Source source, Class<Target> tarClass) {
-        return copy(source, tarClass, false, null);
+        return copy(source, tarClass, null, null);
     }
 
     /**
@@ -86,8 +87,8 @@ public class BeanCopyUtils {
      * @param ignoreNull 是否忽略null值
      * @return 目标对象
      */
-    public static <Target, Source> Target copy(Source source, Class<Target> tarClass, boolean ignoreNull) {
-        return copy(source, tarClass, ignoreNull, null);
+    public static <Target, Source> Target copy(Source source, Class<Target> tarClass, IgnorePolicy ignorePolicy) {
+        return copy(source, tarClass, ignorePolicy, null);
     }
 
     /**
@@ -99,7 +100,7 @@ public class BeanCopyUtils {
      * @return 目标对象
      */
     public static <Target, Source> Target copy(Source source, Class<Target> tarClass, String[] ignoreConditions) {
-        return copy(source, tarClass, false, ignoreConditions);
+        return copy(source, tarClass, null, ignoreConditions);
     }
 
     /**
@@ -111,9 +112,9 @@ public class BeanCopyUtils {
      * @param ignoreNull       是否忽略null值
      * @return 目标对象
      */
-    public static <Target, Source> Target copy(Source source, Class<Target> tarClass, boolean ignoreNull,
+    public static <Target, Source> Target copy(Source source, Class<Target> tarClass, IgnorePolicy ignorePolicy,
             String[] ignoreConditions) {
-        return doCopy(source, tarClass, ignoreNull, ignoreConditions);
+        return doCopy(source, tarClass, ignorePolicy, ignoreConditions);
     }
 
     /**
@@ -124,7 +125,7 @@ public class BeanCopyUtils {
      * @return 目标对象List
      */
     public static <Target, Source> List<Target> copyList(List<Source> srcList, Class<Target> tarClass) {
-        return doCopyList(srcList, tarClass, false, null);
+        return doCopyList(srcList, tarClass, null, null);
     }
 
     /**
@@ -137,7 +138,7 @@ public class BeanCopyUtils {
      */
     public static <Target, Source> List<Target> copyList(List<Source> srcList, Class<Target> tarClass,
             String[] ignoreConditions) {
-        return doCopyList(srcList, tarClass, false, ignoreConditions);
+        return doCopyList(srcList, tarClass, null, ignoreConditions);
     }
 
     /**
@@ -149,8 +150,8 @@ public class BeanCopyUtils {
      * @return 目标对象List
      */
     public static <Target, Source> List<Target> copyList(List<Source> srcList, Class<Target> tarClass,
-            boolean ignoreNull) {
-        return doCopyList(srcList, tarClass, ignoreNull, null);
+            IgnorePolicy ignorePolicy) {
+        return doCopyList(srcList, tarClass, null, null);
     }
 
     /**
@@ -164,7 +165,7 @@ public class BeanCopyUtils {
      * @param ignoreConditions
      * @return
      */
-    private static <Target, Source> Target doCopy(Source source, Target target, boolean ignoreNull,
+    private static <Target, Source> Target doCopy(Source source, Target target, IgnorePolicy ignorePolicy,
             String[] ignoreConditions) {
         if (source == null) {
             return null;
@@ -172,10 +173,10 @@ public class BeanCopyUtils {
         if (target == null) {
             throw new IllegalArgumentException("Target object is null");
         }
-        return copier.copy(source, target, ignoreNull, ignoreConditions);
+        return copier.copy(source, target, ignorePolicy, ignoreConditions);
     }
 
-    private static <Target, Source> Target doCopy(Source source, Class<Target> targetClass, boolean ignoreNull,
+    private static <Target, Source> Target doCopy(Source source, Class<Target> targetClass, IgnorePolicy ignorePolicy,
             String[] ignoreConditions) {
         if (source == null) {
             return null;
@@ -183,7 +184,7 @@ public class BeanCopyUtils {
         if (targetClass == null) {
             throw new IllegalArgumentException("Target class is null");
         }
-        return copier.copy(source, targetClass, ignoreNull, ignoreConditions);
+        return copier.copy(source, targetClass, ignorePolicy, ignoreConditions);
     }
 
     /**
@@ -196,14 +197,14 @@ public class BeanCopyUtils {
      * @return 目标对象List
      */
     public static <Target, Source> List<Target> doCopyList(List<Source> srcList, Class<Target> tarClass,
-            boolean ignoreNull, String[] ignoreConditions) {
+            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         if (srcList == null) {
             return null;
         }
         if (tarClass == null) {
             throw new IllegalArgumentException("Target class is null");
         }
-        return copier.copyList(srcList, tarClass, ignoreNull, ignoreConditions);
+        return copier.copyList(srcList, tarClass, ignorePolicy, ignoreConditions);
     }
 
 }

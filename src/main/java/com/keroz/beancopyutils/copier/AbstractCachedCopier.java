@@ -3,10 +3,12 @@ package com.keroz.beancopyutils.copier;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.keroz.beancopyutils.annotation.CopyIgnore;
+import com.keroz.beancopyutils.annotation.CopyIgnore.IgnorePolicy;
 import com.keroz.beancopyutils.reflection.ReflectionUtils;
 
 import lombok.Data;
@@ -20,7 +22,7 @@ public abstract class AbstractCachedCopier implements Copier {
     private ReferenceQueue<Cache> referenceQueue = new ReferenceQueue<>();
 
     @Override
-    public <Source, Target> Target copy(Source source, Class<Target> targetClass, boolean ignoreNull,
+    public <Source, Target> Target copy(Source source, Class<Target> targetClass, IgnorePolicy ignorePolicy,
             String[] ignoreConditions) {
         if (source == null) {
             return null;
@@ -33,16 +35,16 @@ public abstract class AbstractCachedCopier implements Copier {
             target = targetClass.newInstance();
         } catch (InstantiationException | IllegalAccessException e) {
             throw new com.keroz.beancopyutils.exception.InstantiationException(
-                        "Failed to instantiate class: " + targetClass.getName(), e);
+                    "Failed to instantiate class: " + targetClass.getName(), e);
         }
-        copy(source, target, ignoreNull, ignoreConditions);
+        copy(source, target, ignorePolicy, ignoreConditions);
         return target;
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <Source, Target> List<Target> copyList(List<Source> srcList, Class<Target> targetClass, boolean ignoreNull,
-            String[] ignoreConditions) {
+    public <Source, Target> List<Target> copyList(List<Source> srcList, Class<Target> targetClass,
+            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         List<Target> tarList = new ArrayList<>();
         if (srcList == null) {
             return null;
@@ -53,7 +55,7 @@ public abstract class AbstractCachedCopier implements Copier {
                 if (isPrimitive) {
                     tarList.add((Target) src);
                 } else {
-                    tarList.add((Target) copy(src, targetClass.newInstance(), ignoreNull, ignoreConditions));
+                    tarList.add((Target) copy(src, targetClass.newInstance(), ignorePolicy, ignoreConditions));
                 }
             } catch (InstantiationException | IllegalAccessException e) {
                 throw new com.keroz.beancopyutils.exception.InstantiationException(
@@ -78,15 +80,47 @@ public abstract class AbstractCachedCopier implements Copier {
             String[] exceptConditions = copyIgnore.except();
             boolean exceptConditionsEmpty = exceptConditions.length == 1 && "".equals(exceptConditions[0]);
 
-            if (whenConditionsEmpty && exceptConditionsEmpty) {
-                ignore = true;
-            } else {
-                if (!whenConditionsEmpty) {
-                    ignore = hasCondition(whenConditions, ignoreConditions) ? true : false;
+            if (!whenConditionsEmpty) {
+                ignore = hasCondition(whenConditions, ignoreConditions) ? true : false;
+            }
+            if (!exceptConditionsEmpty) {
+                ignore = hasCondition(exceptConditions, ignoreConditions) ? false : true;
+            }
+
+        }
+        return ignore;
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected final boolean shouldIgnoreNullOrEmpty(Object value, CopyIgnore copyIgnore, IgnorePolicy ignorePolicy) {
+        boolean ignore = false;
+        if (copyIgnore != null) {
+            IgnorePolicy ignorePolicyOnField = copyIgnore.policy();
+            if (ignorePolicyOnField != IgnorePolicy.DEFAULT) {
+                ignorePolicy = ignorePolicyOnField;
+            }
+        }
+        if (ignorePolicy != null) {
+            switch (ignorePolicy) {
+                case NULL: {
+                    if (value == null) {
+                        ignore = true;
+                    }
                 }
-                if (!exceptConditionsEmpty) {
-                    ignore = hasCondition(exceptConditions, ignoreConditions) ? false : true;
+                case EMPTY: {
+                    if (value instanceof String) {
+                        ignore = ((String) value).isEmpty();
+                    } else if (value instanceof Collection) {
+                        ignore = ((Collection) value).isEmpty();
+                    } else if (value instanceof Object[]) {
+                        ignore = ((Object[]) value).length == 0;
+                    } else if (value instanceof Number) {
+                        ignore = ((Number) value).equals(0);
+                    }
+                    break;
                 }
+                default:
+                    break;
             }
         }
         return ignore;
