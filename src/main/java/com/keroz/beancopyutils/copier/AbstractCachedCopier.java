@@ -2,13 +2,13 @@ package com.keroz.beancopyutils.copier;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
-import java.util.ArrayList;
+import java.lang.reflect.Array;
 import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.keroz.beancopyutils.annotation.CopyIgnore;
 import com.keroz.beancopyutils.annotation.CopyIgnore.IgnorePolicy;
+import com.keroz.beancopyutils.exception.TypeMismatchException;
 import com.keroz.beancopyutils.reflection.ReflectionUtils;
 
 import lombok.Data;
@@ -42,27 +42,55 @@ public abstract class AbstractCachedCopier implements Copier {
     }
 
     @Override
+    public Object copyArray(Object sourceArray, Class<?> targetComponentClass, IgnorePolicy ignorePolicy,
+            String[] ignoreConditions) {
+        int length = Array.getLength(sourceArray);
+        Object targetArray = Array.newInstance(targetComponentClass, length);
+        try {
+            if (ReflectionUtils.isPrimitive(targetComponentClass)) {
+                for (int i = 0; i < length; i++) {
+                    Array.set(targetArray, i, Array.get(sourceArray, i));
+                }
+            } else {
+                for (int i = 0; i < length; i++) {
+                    Array.set(targetArray, i,
+                            copy(Array.get(sourceArray, i), targetComponentClass, ignorePolicy, ignoreConditions));
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            throw new TypeMismatchException(targetArray.getClass(), sourceArray.getClass());
+        }
+        return targetArray;
+    }
+
     @SuppressWarnings("unchecked")
-    public <Source, Target> List<Target> copyList(List<Source> srcList, Class<Target> targetClass,
-            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
-        List<Target> tarList = new ArrayList<>();
-        if (srcList == null) {
+    @Override
+    public <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
+            Collection<SourceComponent> sourceCollection, Class<? extends Collection<TargetComponent>> targetClass,
+            Class<TargetComponent> targetComponentClass, IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+        if (sourceCollection == null) {
             return null;
         }
-        boolean isPrimitive = ReflectionUtils.isPrimitive(targetClass);
-        for (Source src : srcList) {
-            try {
-                if (isPrimitive) {
-                    tarList.add((Target) src);
-                } else {
-                    tarList.add((Target) copy(src, targetClass.newInstance(), ignorePolicy, ignoreConditions));
-                }
-            } catch (InstantiationException | IllegalAccessException e) {
-                throw new com.keroz.beancopyutils.exception.InstantiationException(
-                        "Failed to instantiate class: " + targetClass.getName(), e);
+        Class<? extends Collection<TargetComponent>> sourceCollectionClass = (Class<? extends Collection<TargetComponent>>) sourceCollection
+                .getClass();
+        Collection<TargetComponent> targetCollection = null;
+        try {
+            targetCollection = sourceCollectionClass.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new com.keroz.beancopyutils.exception.InstantiationException(
+                    "Failed to instantiate class: " + sourceCollectionClass.getName(), e);
+        }
+        if (ReflectionUtils.isPrimitive(targetComponentClass)) {
+            for (SourceComponent src : sourceCollection) {
+                targetCollection.add(targetComponentClass.cast(src));
+            }
+        } else {
+            for (SourceComponent src : sourceCollection) {
+                targetCollection.add(copy(src, targetComponentClass, ignorePolicy, ignoreConditions));
             }
         }
-        return tarList;
+        
+        return targetCollection;
     }
 
     /**
@@ -102,20 +130,20 @@ public abstract class AbstractCachedCopier implements Copier {
         }
         if (ignorePolicy != null) {
             switch (ignorePolicy) {
-                case NULL: {
-                    if (value == null) {
-                        ignore = true;
-                    }
-                }
                 case EMPTY: {
                     if (value instanceof String) {
                         ignore = ((String) value).isEmpty();
                     } else if (value instanceof Collection) {
                         ignore = ((Collection) value).isEmpty();
-                    } else if (value instanceof Object[]) {
-                        ignore = ((Object[]) value).length == 0;
+                    } else if (value.getClass().isArray()) {
+                        ignore = Array.getLength(value) == 0;
                     } else if (value instanceof Number) {
                         ignore = ((Number) value).equals(0);
+                    }
+                }
+                case NULL: {
+                    if (value == null) {
+                        ignore = true;
                     }
                     break;
                 }

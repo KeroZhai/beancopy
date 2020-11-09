@@ -6,11 +6,16 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class ReflectionUtils {
+
+    public static enum GeneralType {
+        PRIMITIVE, ARRAY, COLLECTION, OBJECT
+    }
 
     /**
      * 获取包括父类的所有字段
@@ -46,9 +51,10 @@ public class ReflectionUtils {
     /**
      * 获取泛型类型
      */
-    public static Class<?> getFieldGenericType(ExtendedField field) {
+    @SuppressWarnings("rawtypes")
+    public static Class getFieldGenericType(ExtendedField field) {
         ParameterizedType type = (ParameterizedType) field.getGenericType();
-        return (Class<?>) type.getActualTypeArguments()[0];
+        return (Class) type.getActualTypeArguments()[0];
     }
 
     public static List<Method> getAllMethods(Class<?> clazz) {
@@ -60,6 +66,17 @@ public class ReflectionUtils {
             superClass = superClass.getSuperclass();
         }
         return methods;
+    }
+
+    public static GeneralType getGeneralType(Class<?> clazz) {
+        if (isPrimitive(clazz)) {
+            return GeneralType.PRIMITIVE;
+        } else if (clazz.isArray()) {
+            return GeneralType.ARRAY;
+        } else if (isCollection(clazz)) {
+            return GeneralType.COLLECTION;
+        }
+        return GeneralType.OBJECT;
     }
 
     /**
@@ -83,6 +100,17 @@ public class ReflectionUtils {
             }
         }
         return result;
+    }
+
+    /**
+     * Checks if the given class is of type {@link Collection}
+     * 
+     * @param clazz the class to check
+     * @return {@code true} if the given class is of type {@link Collection},
+     *         otherwise {@code false}.
+     */
+    public static boolean isCollection(Class<?> clazz) {
+        return Collection.class.isAssignableFrom(clazz);
     }
 
 }
