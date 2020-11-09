@@ -17,11 +17,9 @@ public class ReflectionUtils {
      */
     private static List<Field> getAllFields(Class<?> clazz) {
         List<Field> fields = new ArrayList<>();
-        fields.addAll(Arrays.asList(clazz.getDeclaredFields()));
-        Class<?> superClass = clazz.getSuperclass();
-        while (!superClass.equals(Object.class)) {
-            fields.addAll(Arrays.asList(superClass.getDeclaredFields()));
-            superClass = superClass.getSuperclass();
+        while (!clazz.equals(Object.class)) {
+            fields.addAll(Arrays.asList(clazz.getDeclaredFields()));
+            clazz = clazz.getSuperclass();
         }
         return fields;
     }
