@@ -63,10 +63,6 @@ public class DefaultCopier extends AbstractCachedCopier {
                 String[] ignoreConditions);
     }
 
-    private static interface RawValueProcessor {
-        Object preocess(Object source);
-    }
-
     @Data
     protected static class DefaultCache extends AbstractCachedCopier.Cache {
 
@@ -294,12 +290,6 @@ public class DefaultCopier extends AbstractCachedCopier {
     }
 
     @SuppressWarnings(value = { "rawtypes", "unchecked" })
-    private Object handle(Object source, FieldReader fieldReader, RawValueProcessor processor, Converter converter) {
-        Object value = fieldReader.read(source);
-        return converter != null ? converter.convert(value) : processor != null ? processor.preocess(value) : value;
-    }
-
-    @SuppressWarnings(value = { "rawtypes", "unchecked" })
     private Object handle(Object source, FieldReader fieldReader, ExtendedField targetField,
             GeneralType targetFieldGeneralType, Converter converter, IgnorePolicy ignorePolicy,
             String[] ignoreConditions) {
@@ -355,20 +345,6 @@ public class DefaultCopier extends AbstractCachedCopier {
     }
 
     @SuppressWarnings("rawtypes")
-    private void invokeMethodAccess(MethodAccess methodAccess, int methodIndex, Object target, Object source,
-            FieldReader fieldReader, Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore,
-            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
-        if (shouldIgnore(copyIgnore, ignoreConditions)) {
-            return;
-        }
-        Object value = handle(source, fieldReader, processor, converter);
-        if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
-            return;
-        }
-        methodAccess.invoke(target, methodIndex, value);
-    }
-
-    @SuppressWarnings("rawtypes")
     private void invokeSetMethod(Method method, Object target, Object source, FieldReader fieldReader,
             ExtendedField targetField, GeneralType targetFieldGeneralType, Converter converter, CopyIgnore copyIgnore,
             IgnorePolicy ignorePolicy, String[] ignoreConditions) {
@@ -388,24 +364,6 @@ public class DefaultCopier extends AbstractCachedCopier {
     }
 
     @SuppressWarnings("rawtypes")
-    private void invokeSetMethod(Method method, Object target, Object source, FieldReader fieldReader,
-            Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore, IgnorePolicy ignorePolicy,
-            String[] ignoreConditions) {
-        try {
-            if (shouldIgnore(copyIgnore, ignoreConditions)) {
-                return;
-            }
-            Object value = handle(source, fieldReader, processor, converter);
-            if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
-                return;
-            }
-            method.invoke(target, value);
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @SuppressWarnings("rawtypes")
     private void setFieldValue(ExtendedField field, Object target, Object source, FieldReader fieldReader,
             ExtendedField targetField, GeneralType targetFieldGeneralType, Converter converter, CopyIgnore copyIgnore,
             IgnorePolicy ignorePolicy, String[] ignoreConditions) {
@@ -415,24 +373,6 @@ public class DefaultCopier extends AbstractCachedCopier {
             }
             Object value = handle(source, fieldReader, targetField, targetFieldGeneralType, converter, ignorePolicy,
                     ignoreConditions);
-            if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
-                return;
-            }
-            field.set(target, value);
-        } catch (IllegalAccessException | IllegalArgumentException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @SuppressWarnings("rawtypes")
-    private void setFieldValue(ExtendedField field, Object target, Object source, FieldReader fieldReader,
-            Converter converter, RawValueProcessor processor, CopyIgnore copyIgnore, IgnorePolicy ignorePolicy,
-            String[] ignoreConditions) {
-        try {
-            if (shouldIgnore(copyIgnore, ignoreConditions)) {
-                return;
-            }
-            Object value = handle(source, fieldReader, processor, converter);
             if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
                 return;
             }
