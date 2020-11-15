@@ -12,13 +12,10 @@ public interface Copier {
         <Source, Target> Target copy(Source source, Target target, IgnorePolicy ignorePolicy,
                         String[] ignoreConditions);
 
-        Object copyArray(Object sourceArray,
-                        Class<?> targetComponentClass, IgnorePolicy ignorePolicy,
+        Object copyArray(Object sourceArray, Class<?> targetComponentClass, IgnorePolicy ignorePolicy,
                         String[] ignoreConditions);
 
         <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
-                        Collection<SourceComponent> sourceCollection,
-                        Class<? extends Collection<TargetComponent>> targetClass,
-                        Class<TargetComponent> targetComponentClass, IgnorePolicy ignorePolicy,
-                        String[] ignoreConditions);
+                        Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
+                        IgnorePolicy ignorePolicy, String[] ignoreConditions);
 }

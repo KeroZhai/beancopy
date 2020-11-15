@@ -312,8 +312,8 @@ public class DefaultCopier extends AbstractCachedCopier {
                 }
                 case COLLECTION: {
                     if (result instanceof Collection) {
-                        result = copyCollection((Collection) result, targetFieldClass,
-                                ReflectionUtils.getFieldGenericType(targetField), ignorePolicy, ignoreConditions);
+                        result = copyCollection((Collection) result, ReflectionUtils.getFieldGenericType(targetField),
+                                ignorePolicy, ignoreConditions);
                     } else {
                         throw new TypeMismatchException(Collection.class, result.getClass());
                     }

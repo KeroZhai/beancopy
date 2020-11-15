@@ -16,6 +16,7 @@ import com.keroz.beancopyutils.exception.TypeMismatchException;
 import org.junit.jupiter.api.Test;
 
 import lombok.Data;
+import lombok.ToString;
 
 public class CopyCollectionTest {
 
@@ -60,6 +61,7 @@ public class CopyCollectionTest {
     }
 
     @Data
+    @ToString
     public static class Target2 {
 
         public static final String TEST_COMPONENT_MISMATCH = "testComponnetMismatch";
@@ -84,6 +86,7 @@ public class CopyCollectionTest {
 
     @Test
     public void testCopyCollection() {
+        System.out.println(BeanCopyUtils.copy(new Source2(), Target2.class));
         assertThrows(ClassCastException.class, () -> {
             BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_COMPONENT_MISMATCH });
         });

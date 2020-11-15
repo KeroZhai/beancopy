@@ -5,6 +5,7 @@ import java.lang.ref.SoftReference;
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import com.keroz.beancopyutils.annotation.CopyIgnore;
 import com.keroz.beancopyutils.annotation.CopyIgnore.IgnorePolicy;
@@ -66,30 +67,25 @@ public abstract class AbstractCachedCopier implements Copier {
     @SuppressWarnings("unchecked")
     @Override
     public <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
-            Collection<SourceComponent> sourceCollection, Class<? extends Collection<TargetComponent>> targetClass,
-            Class<TargetComponent> targetComponentClass, IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+            Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
+            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         if (sourceCollection == null) {
             return null;
         }
         Class<? extends Collection<TargetComponent>> sourceCollectionClass = (Class<? extends Collection<TargetComponent>>) sourceCollection
                 .getClass();
-        Collection<TargetComponent> targetCollection = null;
-        try {
-            targetCollection = sourceCollectionClass.newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
-            throw new com.keroz.beancopyutils.exception.InstantiationException(
-                    "Failed to instantiate class: " + sourceCollectionClass.getName(), e);
-        }
-        if (ReflectionUtils.isPrimitive(targetComponentClass)) {
-            for (SourceComponent src : sourceCollection) {
-                targetCollection.add(targetComponentClass.cast(src));
-            }
-        } else {
-            for (SourceComponent src : sourceCollection) {
-                targetCollection.add(copy(src, targetComponentClass, ignorePolicy, ignoreConditions));
-            }
-        }
-        
+        Collection<TargetComponent> targetCollection = sourceCollection.stream()
+                .map(sourceComponent -> ReflectionUtils.isPrimitive(targetComponentClass)
+                        ? targetComponentClass.cast(sourceComponent)
+                        : copy(sourceComponent, targetComponentClass, ignorePolicy, ignoreConditions))
+                .collect(Collectors.toCollection(() -> {
+                    try {
+                        return sourceCollectionClass.newInstance();
+                    } catch (InstantiationException | IllegalAccessException e) {
+                        throw new com.keroz.beancopyutils.exception.InstantiationException(
+                                "Failed to instantiate class: " + sourceCollectionClass.getName(), e);
+                    }
+                }));
         return targetCollection;
     }
 
