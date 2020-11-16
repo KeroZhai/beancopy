@@ -3,8 +3,10 @@ package com.keroz.beancopyutils.reflection;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
+import java.util.Collection;
 
 import com.keroz.beancopyutils.annotation.AliasFor;
+import com.keroz.beancopyutils.annotation.ToCollection;
 import com.keroz.beancopyutils.converter.Converter;
 
 public class ExtendedField {
@@ -12,12 +14,14 @@ public class ExtendedField {
     private Field field;
     private String aliasFor;
     private Class<? extends Converter<?, ?>> converterClass;
+    private Class<? extends Collection<?>> collectionClass;
 
 
     public ExtendedField(Field field) {
         this.field = field;
         this.aliasFor = internalGetAliasFor();
         this.converterClass = internalGetConverterClass();
+        this.collectionClass = internalGetCollectionClass();
     }
 
     private String internalGetAliasFor() {
@@ -32,6 +36,15 @@ public class ExtendedField {
         com.keroz.beancopyutils.annotation.Converter converter = field.getDeclaredAnnotation(com.keroz.beancopyutils.annotation.Converter.class);
         if (converter != null) {
             return converter.value();
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Class<? extends Collection<?>> internalGetCollectionClass() {
+        ToCollection toCollection = field.getDeclaredAnnotation(ToCollection.class);
+        if (toCollection != null) {
+            return (Class<? extends Collection<?>>) toCollection.value();
         }
         return null;
     }
@@ -76,5 +89,7 @@ public class ExtendedField {
         return this.converterClass;
     }
 
-
+    public Class<? extends Collection<?>> getCollectionClass() {
+        return this.collectionClass;
+    }
 }

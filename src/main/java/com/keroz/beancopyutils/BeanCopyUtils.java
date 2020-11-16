@@ -50,25 +50,32 @@ public class BeanCopyUtils {
 
     public static <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
             Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass) {
-        return doCopyCollection(sourceCollection, targetComponentClass, null, null);
+        return doCopyCollection(sourceCollection, targetComponentClass, null, null, null);
     }
 
     public static <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
             Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
             String[] ignoreConditions) {
-        return doCopyCollection(sourceCollection, targetComponentClass, null, ignoreConditions);
+        return doCopyCollection(sourceCollection, targetComponentClass, null, null, ignoreConditions);
     }
 
     public static <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
             Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
             IgnorePolicy ignorePolicy) {
-        return doCopyCollection(sourceCollection, targetComponentClass, ignorePolicy, null);
+        return doCopyCollection(sourceCollection, targetComponentClass, null, ignorePolicy, null);
     }
 
     public static <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
             Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
             IgnorePolicy ignorePolicy, String[] ignoreConditions) {
-        return doCopyCollection(sourceCollection, targetComponentClass, ignorePolicy, ignoreConditions);
+        return doCopyCollection(sourceCollection, targetComponentClass, null, ignorePolicy, ignoreConditions);
+    }
+
+    public static <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
+            Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
+            Class<? extends Collection<?>> collectionClass, IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+        return doCopyCollection(sourceCollection, targetComponentClass, collectionClass, ignorePolicy,
+                ignoreConditions);
     }
 
     private static <Target, Source> Target doCopy(Source source, Target target, IgnorePolicy ignorePolicy,
@@ -93,13 +100,14 @@ public class BeanCopyUtils {
         return copier.copy(source, targetClass, ignorePolicy, ignoreConditions);
     }
 
-    public static <SourceComponent, TargetComponent> Collection<TargetComponent> doCopyCollection(
+    private static <SourceComponent, TargetComponent> Collection<TargetComponent> doCopyCollection(
             Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
-            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+            Class<? extends Collection<?>> collectionClass, IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         if (sourceCollection == null) {
             return null;
         }
-        return copier.copyCollection(sourceCollection, targetComponentClass, ignorePolicy, ignoreConditions);
+        return copier.copyCollection(sourceCollection, targetComponentClass, collectionClass, ignorePolicy,
+                ignoreConditions);
 
     }
 

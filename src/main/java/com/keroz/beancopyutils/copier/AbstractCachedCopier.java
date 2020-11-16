@@ -68,12 +68,13 @@ public abstract class AbstractCachedCopier implements Copier {
     @Override
     public <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
             Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
-            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+            Class<? extends Collection<?>> collectionClass, IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         if (sourceCollection == null) {
             return null;
         }
-        Class<? extends Collection<TargetComponent>> sourceCollectionClass = (Class<? extends Collection<TargetComponent>>) sourceCollection
-                .getClass();
+        Class<? extends Collection<TargetComponent>> sourceCollectionClass = (Class<? extends Collection<TargetComponent>>) (collectionClass != null
+                ? collectionClass
+                : sourceCollection.getClass());
         Collection<TargetComponent> targetCollection = sourceCollection.stream()
                 .map(sourceComponent -> ReflectionUtils.isPrimitive(targetComponentClass)
                         ? targetComponentClass.cast(sourceComponent)

@@ -291,8 +291,8 @@ public class DefaultCopier extends AbstractCachedCopier {
 
     @SuppressWarnings(value = { "rawtypes", "unchecked" })
     private Object handle(Object source, FieldReader fieldReader, ExtendedField targetField,
-            GeneralType targetFieldGeneralType, Converter converter, IgnorePolicy ignorePolicy,
-            String[] ignoreConditions) {
+            GeneralType targetFieldGeneralType, Converter converter, Class<? extends Collection<?>> collectionClass,
+            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         Object result = fieldReader.read(source);
         Class targetFieldClass = targetField.getType();
         if (converter != null) {
@@ -313,7 +313,7 @@ public class DefaultCopier extends AbstractCachedCopier {
                 case COLLECTION: {
                     if (result instanceof Collection) {
                         result = copyCollection((Collection) result, ReflectionUtils.getFieldGenericType(targetField),
-                                ignorePolicy, ignoreConditions);
+                                collectionClass, ignorePolicy, ignoreConditions);
                     } else {
                         throw new TypeMismatchException(Collection.class, result.getClass());
                     }
@@ -336,8 +336,8 @@ public class DefaultCopier extends AbstractCachedCopier {
         if (shouldIgnore(copyIgnore, ignoreConditions)) {
             return;
         }
-        Object value = handle(source, fieldReader, targetField, targetFieldGeneralType, converter, ignorePolicy,
-                ignoreConditions);
+        Object value = handle(source, fieldReader, targetField, targetFieldGeneralType, converter,
+                targetField.getCollectionClass(), ignorePolicy, ignoreConditions);
         if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
             return;
         }
@@ -352,8 +352,8 @@ public class DefaultCopier extends AbstractCachedCopier {
             if (shouldIgnore(copyIgnore, ignoreConditions)) {
                 return;
             }
-            Object value = handle(source, fieldReader, targetField, targetFieldGeneralType, converter, ignorePolicy,
-                    ignoreConditions);
+            Object value = handle(source, fieldReader, targetField, targetFieldGeneralType, converter,
+                    targetField.getCollectionClass(), ignorePolicy, ignoreConditions);
             if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
                 return;
             }
@@ -371,8 +371,8 @@ public class DefaultCopier extends AbstractCachedCopier {
             if (shouldIgnore(copyIgnore, ignoreConditions)) {
                 return;
             }
-            Object value = handle(source, fieldReader, targetField, targetFieldGeneralType, converter, ignorePolicy,
-                    ignoreConditions);
+            Object value = handle(source, fieldReader, targetField, targetFieldGeneralType, converter,
+                    targetField.getCollectionClass(), ignorePolicy, ignoreConditions);
             if (shouldIgnoreNullOrEmpty(value, copyIgnore, ignorePolicy)) {
                 return;
             }

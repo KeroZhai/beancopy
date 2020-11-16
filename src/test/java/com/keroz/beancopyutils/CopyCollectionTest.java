@@ -1,6 +1,7 @@
 package com.keroz.beancopyutils;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Deque;
@@ -11,6 +12,7 @@ import java.util.Queue;
 
 import com.keroz.beancopyutils.annotation.AliasFor;
 import com.keroz.beancopyutils.annotation.CopyIgnore;
+import com.keroz.beancopyutils.annotation.ToCollection;
 import com.keroz.beancopyutils.exception.TypeMismatchException;
 
 import org.junit.jupiter.api.Test;
@@ -79,6 +81,9 @@ public class CopyCollectionTest {
         @CopyIgnore(except = TEST_CONTAINER_MISMATCH)
         @AliasFor("intLinkedList")
         private ArrayList<Integer> intArrayList2; // This will cause a ClassCastException to be thrown
+        @AliasFor("intLinkedList")
+        @ToCollection(ArrayList.class)
+        private ArrayList<Integer> intArrayList3;
         private HashSet<Integer> intHashSet;
         private Queue<Integer> intQueue;
         private Deque<Integer> intDeque;
@@ -86,7 +91,9 @@ public class CopyCollectionTest {
 
     @Test
     public void testCopyCollection() {
-        System.out.println(BeanCopyUtils.copy(new Source2(), Target2.class));
+        Target2 target = BeanCopyUtils.copy(new Source2(), Target2.class);
+        System.out.println(target);
+        assertTrue(ArrayList.class.equals(target.getIntArrayList3().getClass()));
         assertThrows(ClassCastException.class, () -> {
             BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_COMPONENT_MISMATCH });
         });

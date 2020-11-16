@@ -16,6 +16,6 @@ public interface Copier {
                         String[] ignoreConditions);
 
         <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
-                        Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
+                        Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass, Class<? extends Collection<?>> collectionClass,
                         IgnorePolicy ignorePolicy, String[] ignoreConditions);
 }
