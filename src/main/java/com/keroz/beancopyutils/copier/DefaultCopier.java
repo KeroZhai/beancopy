@@ -251,7 +251,8 @@ public class DefaultCopier extends AbstractCachedCopier {
             if (index != -1) {
                 final int methodIndex = index;
                 fieldWriter = (t, s, r, in, i) -> {
-                    invokeMethodAccess(methodAccess, methodIndex, t, s, r, field, generalType, converter, copyIgnore, in, i);
+                    invokeMethodAccess(methodAccess, methodIndex, t, s, r, field, generalType, converter, copyIgnore,
+                            in, i);
                 };
             }
         } else {
@@ -302,6 +303,8 @@ public class DefaultCopier extends AbstractCachedCopier {
                 }
                 case COLLECTION: {
                     if (result instanceof Collection) {
+                        collectionClass = collectionClass != null ? collectionClass
+                                : !targetFieldClass.isInterface() ? targetFieldClass : null;
                         result = copyCollection((Collection) result, ReflectionUtils.getFieldGenericType(targetField),
                                 collectionClass, ignorePolicy, ignoreConditions);
                     } else {

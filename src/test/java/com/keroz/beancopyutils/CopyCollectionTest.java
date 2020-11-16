@@ -80,7 +80,7 @@ public class CopyCollectionTest {
         private List<String> stringList; // This will cause a ClassCastException to be thrown
         @CopyIgnore(except = TEST_CONTAINER_MISMATCH)
         @AliasFor("intLinkedList")
-        private ArrayList<Integer> intArrayList2; // This will cause a ClassCastException to be thrown
+        private ArrayList<Integer> intArrayList2;
         @AliasFor("intLinkedList")
         @ToCollection(ArrayList.class)
         private ArrayList<Integer> intArrayList3;
@@ -97,9 +97,7 @@ public class CopyCollectionTest {
         assertThrows(ClassCastException.class, () -> {
             BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_COMPONENT_MISMATCH });
         });
-        assertThrows(ClassCastException.class, () -> {
-            BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_CONTAINER_MISMATCH });
-        });
+        System.out.println(BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_CONTAINER_MISMATCH }));
     }
 
 }
