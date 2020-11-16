@@ -6,6 +6,7 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 
 import com.keroz.beancopyutils.annotation.AliasFor;
+import com.keroz.beancopyutils.annotation.CopyIgnore;
 import com.keroz.beancopyutils.annotation.ToCollection;
 import com.keroz.beancopyutils.converter.Converter;
 
@@ -13,6 +14,7 @@ public class ExtendedField {
 
     private Field field;
     private String aliasFor;
+    private CopyIgnore copyIgnore;
     private Class<? extends Converter<?, ?>> converterClass;
     private Class<? extends Collection<?>> collectionClass;
 
@@ -20,6 +22,7 @@ public class ExtendedField {
     public ExtendedField(Field field) {
         this.field = field;
         this.aliasFor = internalGetAliasFor();
+        this.copyIgnore = field.getDeclaredAnnotation(CopyIgnore.class);
         this.converterClass = internalGetConverterClass();
         this.collectionClass = internalGetCollectionClass();
     }
@@ -83,6 +86,10 @@ public class ExtendedField {
      */
     public String getAliasFor() {
         return this.aliasFor;
+    }
+
+    public CopyIgnore getCopyIgnore() {
+        return this.copyIgnore;
     }
 
     public Class<? extends Converter<?, ?>> getConverterClass() {

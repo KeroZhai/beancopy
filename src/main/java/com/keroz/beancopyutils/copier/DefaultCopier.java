@@ -12,6 +12,7 @@ import com.esotericsoftware.reflectasm.MethodAccess;
 import com.keroz.beancopyutils.annotation.CopyIgnore;
 import com.keroz.beancopyutils.annotation.CopyIgnore.IgnorePolicy;
 import com.keroz.beancopyutils.converter.Converter;
+import com.keroz.beancopyutils.converter.ConverterFactory;
 import com.keroz.beancopyutils.exception.TypeMismatchException;
 import com.keroz.beancopyutils.reflection.ExtendedField;
 import com.keroz.beancopyutils.reflection.ReflectionUtils;
@@ -232,19 +233,8 @@ public class DefaultCopier extends AbstractCachedCopier {
         FieldWriter fieldWriter = (t, s, r, in, i) -> {
         };
 
-        CopyIgnore copyIgnore = field.getDeclaredAnnotation(CopyIgnore.class);
-        Class<? extends Converter<?, ?>> converterClass = field.getConverterClass();
-        Converter<?, ?> converter = null;
-        if (converterClass != null) {
-            try {
-                converter = converterClass.newInstance();
-            } catch (InstantiationException | IllegalAccessException e) {
-                e.printStackTrace();
-                throw new com.keroz.beancopyutils.exception.InstantiationException(
-                        "Failed to instantiate converter class: " + converterClass.getName(), e);
-            }
-        }
-        final Converter<?, ?> c = converter;
+        CopyIgnore copyIgnore = field.getCopyIgnore();
+        final Converter<?, ?> converter = ConverterFactory.getConverter(field.getConverterClass());
         GeneralType generalType = ReflectionUtils.getGeneralType(field.getType());
         String methodNameSuffix = getMethodNameSuffix(field.getName());
         boolean hasWriteMethod = false;
@@ -261,7 +251,7 @@ public class DefaultCopier extends AbstractCachedCopier {
             if (index != -1) {
                 final int methodIndex = index;
                 fieldWriter = (t, s, r, in, i) -> {
-                    invokeMethodAccess(methodAccess, methodIndex, t, s, r, field, generalType, c, copyIgnore, in, i);
+                    invokeMethodAccess(methodAccess, methodIndex, t, s, r, field, generalType, converter, copyIgnore, in, i);
                 };
             }
         } else {
@@ -269,7 +259,7 @@ public class DefaultCopier extends AbstractCachedCopier {
             for (Method method : methods) {
                 if (method.getName().equals("set" + methodNameSuffix)) {
                     fieldWriter = (t, s, r, in, i) -> {
-                        invokeSetMethod(method, t, s, r, field, generalType, c, copyIgnore, in, i);
+                        invokeSetMethod(method, t, s, r, field, generalType, converter, copyIgnore, in, i);
                     };
                     hasWriteMethod = true;
                     break;
@@ -280,7 +270,7 @@ public class DefaultCopier extends AbstractCachedCopier {
             try {
                 field.setAccessible(true);
                 fieldWriter = (t, s, r, in, i) -> {
-                    setFieldValue(field, t, s, r, field, generalType, c, copyIgnore, in, i);
+                    setFieldValue(field, t, s, r, field, generalType, converter, copyIgnore, in, i);
                 };
             } catch (SecurityException | IllegalArgumentException ex) {
                 ex.printStackTrace();
