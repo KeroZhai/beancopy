@@ -125,7 +125,7 @@ BeanCopyUtils.copy(new Bean(), Bean.class, IgnorePolicy.EMPTY);
 
 However, the annotation has a higher priority so that you can make some exceptions on certain fields.
 
-#### Colltctions
+#### Collections
 
 Generally, no additional configuration is required when handling target fields of type `Collection`.
 
