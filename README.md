@@ -46,7 +46,7 @@ Target target = new Target();
 BeanCopyUtils.copy(new Source(), target);
 ```
 
-As you can see, getters/setters are not necessray, however, it's recommanded to provide them since they are Javebeans.
+As you can see, getters/setters are not necessary, however, it's recommanded to have them for Javebeans.
 
 ### Advanced
 
@@ -108,13 +108,15 @@ public class Bean {
 }
 ```
 
-It's obviously not diffcult to understand what those annotations do. The field `id` will always be ignored during copying except you want to `COPY_WITH_NAME`, and the field `name` will be ignored only when you want to `COPY_WITHOUT_NAME` or its value is empty.
+It's obviously not diffcult to understand what those annotations do. The field `id` will always be ignored during copying except you want to `COPY_WITH_NAME`, and the field `name` will be ignored only when you want to `COPY_WITHOUT_NAME` **or** its value is empty.
 
 Those two `String` constants serve as conditions, which can be specified by providing an array of them when copying. For example:
 
 ``` Java
-BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITH_NAME }); // Both id and name will be copied
-BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITHOUT_NAME }); // Both id and name will be ignored
+// Both id and name will be copied
+BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITH_NAME });
+// Both id and name will be ignored
+BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITHOUT_NAME });
 ```
 
 You can also decide whether to ignore all the fields with `null` or empty values:
@@ -140,6 +142,7 @@ public class Bean {
 ```
 
 ## Performance
+
 The performance has not been tested yet, but it should be acceptable.
 
 It is rather appreciated if you can offer some advice or even personally help improve it!
