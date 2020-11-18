@@ -146,3 +146,7 @@ public class Bean {
 The performance has not been tested yet, but it should be acceptable.
 
 It is rather appreciated if you can offer some advice or even personally help improve it!
+
+## License
+
+[MIT](https://opensource.org/licenses/MIT)
