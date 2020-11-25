@@ -289,34 +289,36 @@ public class DefaultCopier extends AbstractCachedCopier {
         if (converter != null) {
             result = converter.convert(result);
         } else {
-            switch (targetFieldGeneralType) {
-                case PRIMITIVE:
-                    // Do nothing
-                    break;
-                case ARRAY: {
-                    if (result.getClass().isArray()) {
-                        result = copyArray(result, targetFieldClass.getComponentType(), ignorePolicy, ignoreConditions);
-                    } else {
-                        throw new TypeMismatchException(Array.class, result.getClass());
+            if (result != null) {
+                switch (targetFieldGeneralType) {
+                    case PRIMITIVE:
+                        // Do nothing
+                        break;
+                    case ARRAY: {
+                        if (result.getClass().isArray()) {
+                            result = copyArray(result, targetFieldClass.getComponentType(), ignorePolicy, ignoreConditions);
+                        } else {
+                            throw new TypeMismatchException(Array.class, result.getClass());
+                        }
+                        break;
                     }
-                    break;
-                }
-                case COLLECTION: {
-                    if (result instanceof Collection) {
-                        collectionClass = collectionClass != null ? collectionClass
-                                : !targetFieldClass.isInterface() ? targetFieldClass : null;
-                        result = copyCollection((Collection) result, ReflectionUtils.getFieldGenericType(targetField),
-                                collectionClass, ignorePolicy, ignoreConditions);
-                    } else {
-                        throw new TypeMismatchException(Collection.class, result.getClass());
+                    case COLLECTION: {
+                        if (result instanceof Collection) {
+                            collectionClass = collectionClass != null ? collectionClass
+                                    : !targetFieldClass.isInterface() ? targetFieldClass : null;
+                            result = copyCollection((Collection) result, ReflectionUtils.getFieldGenericType(targetField),
+                                    collectionClass, ignorePolicy, ignoreConditions);
+                        } else {
+                            throw new TypeMismatchException(Collection.class, result.getClass());
+                        }
+                        break;
                     }
-                    break;
+                    default: {
+                        result = copy(result, targetFieldClass, ignorePolicy, ignoreConditions);
+                        break;
+                    }
+    
                 }
-                default: {
-                    result = copy(result, targetFieldClass, ignorePolicy, ignoreConditions);
-                    break;
-                }
-
             }
         }
         return result;
