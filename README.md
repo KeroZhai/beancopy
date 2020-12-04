@@ -98,10 +98,10 @@ Take a look at the class below:
 
 ``` Java
 public class Bean {
-    public static final String COPY_WITH_NAME = "copyWithName";
+    public static final String COPY_WITH_ID = "copyWithId";
     public static final String COPY_WITHOUT_NAME = "copyWithoutName";
 
-    @CopyIgnore(except = COPY_WITH_NAME)
+    @CopyIgnore(except = COPY_WITH_ID)
     private int id;
     @CopyIgnore(when = COPY_WITHOUT_NAME, policy = IgnorePolicy.EMPTY)
     private String name;
@@ -114,7 +114,7 @@ Those two `String` constants serve as conditions, which can be specified by prov
 
 ``` Java
 // Both id and name will be copied
-BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITH_NAME });
+BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITH_ID });
 // Both id and name will be ignored
 BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITHOUT_NAME });
 ```
