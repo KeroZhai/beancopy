@@ -119,6 +119,8 @@ BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITH_ID });
 BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITHOUT_NAME });
 ```
 
+> Note that the coditions are simply `String` constants, therefore, you may have to make sure that they are unique.
+
 You can also decide whether to ignore all the fields with `null` or empty values:
 
 ``` Java 
