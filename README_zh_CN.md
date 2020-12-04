@@ -107,7 +107,7 @@ public class Bean {
 }
 ```
 
-很明显，不难去理解上面这些注解做了些什么。字段 `id` 总会在拷贝时被忽略，除非当你想要 `COPY_WITH_NAME`, 而字段 `name` 只有当你想要 `COPY_WITHOUT_NAME` **或者**它的值为空的时候才会被忽略。
+很明显，不难去理解上面这些注解做了些什么。字段 `id` 总会在拷贝时被忽略，除非当你想要 `COPY_WITH_NAME`, 而字段 `name` 只有当你想要 `COPY_WITHOUT_ID` **或者**它的值为空的时候才会被忽略。
 
 两个字符串常量用来作为条件，可在拷贝的时候以数组的形式指定。例如：
 
@@ -117,6 +117,8 @@ BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITH_ID });
 // `id` 和 `name` 都会被忽略
 BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITHOUT_NAME });
 ```
+
+> 注意，由于条件都是简单的字符串常量，所以你可能需要保证它们的唯一性。
 
 你也可以决定是否要忽略所有值为 `null` 或空的字段：
 

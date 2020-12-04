@@ -109,7 +109,7 @@ public class Bean {
 }
 ```
 
-It's obviously not diffcult to understand what those annotations do. The field `id` will always be ignored during copying except you want to `COPY_WITH_NAME`, and the field `name` will be ignored only when you want to `COPY_WITHOUT_NAME` **or** its value is empty.
+It's obviously not diffcult to understand what those annotations do. The field `id` will always be ignored during copying except you want to `COPY_WITH_ID`, and the field `name` will be ignored only when you want to `COPY_WITHOUT_NAME` **or** its value is empty.
 
 Those two `String` constants serve as conditions, which can be specified by providing an array of them when copying. For example:
 
