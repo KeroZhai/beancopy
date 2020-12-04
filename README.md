@@ -1,4 +1,5 @@
 # BeanCopyUtils
+[简体中文](https://github.com/KeroZhai/beancopy/blob/master/README_zh_CN.md) | [English](https://github.com/KeroZhai/beancopy/blob/master/README.md)
 
 A simple but useful utility to copy beans.
 
