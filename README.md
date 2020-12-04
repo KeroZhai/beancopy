@@ -67,7 +67,7 @@ public class Target {
 
 #### Converters
 
-Use `@Converter` to provide a custom converter (class). A custome converter class must implements the `Converter` interface. For example:
+Use `@Converter` to provide a custom converter (class). A custome converter class must implement the `Converter` interface. For example:
 
 ``` Java
 public class TimestampToDateConverter implements Converter<Long, Date> {
@@ -131,7 +131,7 @@ However, the annotation has a higher priority so that you can make some exceptio
 
 Generally, no additional configuration is required when handling target fields of type `Collection`.
 
-If the type of a target field is an interface, like `List`, then the copied value will be of the same type with the source. If this is not what you want, you can just declare the field with an implementation type, like `ArrayList`. If you insist with an interface type, you can also use `@ToCollection` to specify one.
+If the type of a target field is an interface type, like `List`, then the copied value will be of the same type with the source. If this is not what you want, you can just declare the field with an implementation type, like `ArrayList`. Since it's a good practice to use an interface type, you can use `@ToCollection` to specify an implementation type.
 
 ``` Java
 public class Bean {
