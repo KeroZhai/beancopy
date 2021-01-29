@@ -3,13 +3,17 @@ package com.keroz.beancopyutils.copier;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import com.keroz.beancopyutils.annotation.CopyIgnore;
 import com.keroz.beancopyutils.annotation.CopyIgnore.IgnorePolicy;
+import com.keroz.beancopyutils.exception.InvokeIgnorePolicySupplierFailedException;
 import com.keroz.beancopyutils.exception.TypeMismatchException;
+import com.keroz.beancopyutils.reflection.ExtendedField;
 import com.keroz.beancopyutils.reflection.ReflectionUtils;
 
 import lombok.Data;
@@ -97,28 +101,51 @@ public abstract class AbstractCachedCopier implements Copier {
      * @param ignoreConditions 忽略条件
      * @return {@code true} 或 {@code false}
      */
-    protected final boolean shouldIgnore(CopyIgnore copyIgnore, String[] ignoreConditions) {
+    protected final boolean shouldIgnore(ExtendedField extendedField, String[] ignoreConditions, Object target,
+            Object source) {
         boolean ignore = false;
+        CopyIgnore copyIgnore = extendedField.getCopyIgnore();
         if (copyIgnore != null) {
-            String[] whenConditions = copyIgnore.when();
-            boolean whenConditionsEmpty = whenConditions.length == 1 && "".equals(whenConditions[0]);
-            String[] exceptConditions = copyIgnore.except();
-            boolean exceptConditionsEmpty = exceptConditions.length == 1 && "".equals(exceptConditions[0]);
+            String supplierMethodName = copyIgnore.supplierMethod();
+            if (!supplierMethodName.equals("")) {
+                try {
+                    Method supplierMethod = extendedField.getDeclaringClass().getDeclaredMethod(supplierMethodName,
+                            Object.class);
+                    Class<?> returnType = supplierMethod.getReturnType();
+                    if (returnType.equals(boolean.class) || returnType.equals(Boolean.class)) {
+                        return (boolean) supplierMethod.invoke(target, source);
+                    } else {
+                        throw new InvokeIgnorePolicySupplierFailedException(
+                                "Failed to invoke ignore policy supplier method: " + supplierMethod.toGenericString()
+                                        + "\nExpected return type to be boolean, but got: " + returnType,
+                                null);
+                    }
+                } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+                        | InvocationTargetException e) {
+                    throw new InvokeIgnorePolicySupplierFailedException(
+                            "Failed to invoke ignore policy supplier method: " + e.getMessage(), e);
+                }
+            } else {
+                String[] whenConditions = copyIgnore.when();
+                boolean whenConditionsEmpty = whenConditions.length == 1 && "".equals(whenConditions[0]);
+                String[] exceptConditions = copyIgnore.except();
+                boolean exceptConditionsEmpty = exceptConditions.length == 1 && "".equals(exceptConditions[0]);
 
-            if (!whenConditionsEmpty) {
-                ignore = hasCondition(whenConditions, ignoreConditions) ? true : false;
+                if (!whenConditionsEmpty) {
+                    ignore = hasCondition(whenConditions, ignoreConditions) ? true : false;
+                }
+                if (!exceptConditionsEmpty) {
+                    ignore = hasCondition(exceptConditions, ignoreConditions) ? false : true;
+                }
             }
-            if (!exceptConditionsEmpty) {
-                ignore = hasCondition(exceptConditions, ignoreConditions) ? false : true;
-            }
-
         }
         return ignore;
     }
 
     @SuppressWarnings("rawtypes")
-    protected final boolean shouldIgnoreNullOrEmpty(Object value, CopyIgnore copyIgnore, IgnorePolicy ignorePolicy) {
+    protected final boolean shouldIgnoreNullOrEmpty(Object value, ExtendedField field, IgnorePolicy ignorePolicy) {
         boolean ignore = false;
+        CopyIgnore copyIgnore = field.getCopyIgnore();
         if (copyIgnore != null) {
             IgnorePolicy ignorePolicyOnField = copyIgnore.policy();
             if (ignorePolicyOnField != IgnorePolicy.DEFAULT) {

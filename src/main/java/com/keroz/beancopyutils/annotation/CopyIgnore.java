@@ -71,6 +71,8 @@ public @interface CopyIgnore {
 
     IgnorePolicy policy() default IgnorePolicy.DEFAULT;
 
+    String supplierMethod() default "";
+
     /**
      * Determines whether null or empty values should be ignored or not.
      */

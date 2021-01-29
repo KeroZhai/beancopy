@@ -51,7 +51,6 @@ public class ExtendedField {
         }
         return null;
     }
-
     
     public String getName() {
         return this.field.getName();
@@ -90,6 +89,10 @@ public class ExtendedField {
 
     public CopyIgnore getCopyIgnore() {
         return this.copyIgnore;
+    }
+
+    public Class<?> getDeclaringClass() {
+        return this.field.getDeclaringClass();
     }
 
     public Class<? extends Converter<?, ?>> getConverterClass() {
