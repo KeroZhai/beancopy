@@ -155,7 +155,9 @@ public abstract class AbstractCachedCopier implements Copier {
         if (ignorePolicy != null) {
             switch (ignorePolicy) {
                 case EMPTY: {
-                    if (value instanceof String) {
+                    if (value == null) {
+                        ignore = true;
+                    } else if (value instanceof String) {
                         ignore = ((String) value).isEmpty();
                     } else if (value instanceof Collection) {
                         ignore = ((Collection) value).isEmpty();
