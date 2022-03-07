@@ -5,6 +5,7 @@ import java.lang.ref.SoftReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -78,7 +79,9 @@ public abstract class AbstractCachedCopier implements Copier {
         }
         Class<? extends Collection<TargetComponent>> sourceCollectionClass = (Class<? extends Collection<TargetComponent>>) (collectionClass != null
                 ? collectionClass
-                : sourceCollection.getClass());
+                : sourceCollection.getClass().getName().equals("org.hibernate.collection.internal.PersistentBag")
+                        ? ArrayList.class
+                        : sourceCollection.getClass());
         Collection<TargetComponent> targetCollection = sourceCollection.stream()
                 .map(sourceComponent -> ReflectionUtils.isPrimitive(targetComponentClass)
                         ? targetComponentClass.cast(sourceComponent)
