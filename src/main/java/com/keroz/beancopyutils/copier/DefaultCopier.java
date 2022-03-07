@@ -282,10 +282,11 @@ public class DefaultCopier extends AbstractCachedCopier {
             GeneralType targetFieldGeneralType, Converter converter, Class<? extends Collection<?>> collectionClass,
             IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         Object result = fieldReader.read(source);
+        // TODO 支持泛型 targetField.getGenericType()
         Class targetFieldClass = targetField.getType();
         if (converter != null) {
             result = converter.convert(result);
-        } else {
+        } else if (result != null) {
             switch (targetFieldGeneralType) {
                 case PRIMITIVE:
                     // Do nothing
