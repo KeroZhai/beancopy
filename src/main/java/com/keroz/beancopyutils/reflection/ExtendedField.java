@@ -18,7 +18,6 @@ public class ExtendedField {
     private Class<? extends Converter<?, ?>> converterClass;
     private Class<? extends Collection<?>> collectionClass;
 
-
     public ExtendedField(Field field) {
         this.field = field;
         this.aliasFor = internalGetAliasFor();
@@ -36,7 +35,8 @@ public class ExtendedField {
     }
 
     private Class<? extends Converter<?, ?>> internalGetConverterClass() {
-        com.keroz.beancopyutils.annotation.Converter converter = field.getDeclaredAnnotation(com.keroz.beancopyutils.annotation.Converter.class);
+        com.keroz.beancopyutils.annotation.Converter converter = field
+                .getDeclaredAnnotation(com.keroz.beancopyutils.annotation.Converter.class);
         if (converter != null) {
             return converter.value();
         }
@@ -46,12 +46,15 @@ public class ExtendedField {
     @SuppressWarnings("unchecked")
     private Class<? extends Collection<?>> internalGetCollectionClass() {
         ToCollection toCollection = field.getDeclaredAnnotation(ToCollection.class);
+        Class<?> implementationType = null;
+
         if (toCollection != null) {
-            return (Class<? extends Collection<?>>) toCollection.value();
+            implementationType = toCollection.value();
         }
-        return null;
+
+        return (Class<? extends Collection<?>>) implementationType;
     }
-    
+
     public String getName() {
         return this.field.getName();
     }
@@ -79,7 +82,7 @@ public class ExtendedField {
     /**
      * Returns the name of this field, or the name of the source field if this field
      * is an {@link AliasFor alias for} it.
-     * 
+     *
      * @return the name of this field or the source field
      * @see AliasFor
      */
