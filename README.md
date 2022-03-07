@@ -1,4 +1,5 @@
 # BeanCopyUtils
+[简体中文](https://github.com/KeroZhai/beancopy/blob/master/README_zh_CN.md) | [English](https://github.com/KeroZhai/beancopy/blob/master/README.md)
 
 A simple but useful utility to copy beans.
 
@@ -67,7 +68,7 @@ public class Target {
 
 #### Converters
 
-Use `@Converter` to provide a custom converter (class). A custome converter class must implements the `Converter` interface. For example:
+Use `@Converter` to provide a custom converter (class). A custome converter class must implement the `Converter` interface. For example:
 
 ``` Java
 public class TimestampToDateConverter implements Converter<Long, Date> {
@@ -98,26 +99,28 @@ Take a look at the class below:
 
 ``` Java
 public class Bean {
-    public static final String COPY_WITH_NAME = "copyWithName";
+    public static final String COPY_WITH_ID = "copyWithId";
     public static final String COPY_WITHOUT_NAME = "copyWithoutName";
 
-    @CopyIgnore(except = COPY_WITH_NAME)
+    @CopyIgnore(except = COPY_WITH_ID)
     private int id;
     @CopyIgnore(when = COPY_WITHOUT_NAME, policy = IgnorePolicy.EMPTY)
     private String name;
 }
 ```
 
-It's obviously not diffcult to understand what those annotations do. The field `id` will always be ignored during copying except you want to `COPY_WITH_NAME`, and the field `name` will be ignored only when you want to `COPY_WITHOUT_NAME` **or** its value is empty.
+It's obviously not diffcult to understand what those annotations do. The field `id` will always be ignored during copying except you want to `COPY_WITH_ID`, and the field `name` will be ignored only when you want to `COPY_WITHOUT_NAME` **or** its value is empty.
 
 Those two `String` constants serve as conditions, which can be specified by providing an array of them when copying. For example:
 
 ``` Java
 // Both id and name will be copied
-BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITH_NAME });
+BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITH_ID });
 // Both id and name will be ignored
 BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITHOUT_NAME });
 ```
+
+> Note that the coditions are simply `String` constants, therefore, you may have to make sure that they are unique.
 
 You can also decide whether to ignore all the fields with `null` or empty values:
 
@@ -131,7 +134,7 @@ However, the annotation has a higher priority so that you can make some exceptio
 
 Generally, no additional configuration is required when handling target fields of type `Collection`.
 
-If the type of a target field is an interface, like `List`, then the copied value will be of the same type with the source. If this is not what you want, you can just declare the field with an implementation type, like `ArrayList`. If you insist with an interface type, you can also use `@ToCollection` to specify one.
+If the type of a target field is an interface type, like `List`, then the copied value will be of the same type with the source. If this is not what you want, you can just declare the field with an implementation type, like `ArrayList`. Since it's a good practice to use an interface type, you can use `@ToCollection` to specify an implementation type.
 
 ``` Java
 public class Bean {
@@ -146,3 +149,7 @@ public class Bean {
 The performance has not been tested yet, but it should be acceptable.
 
 It is rather appreciated if you can offer some advice or even personally help improve it!
+
+## License
+
+[MIT](https://opensource.org/licenses/MIT)

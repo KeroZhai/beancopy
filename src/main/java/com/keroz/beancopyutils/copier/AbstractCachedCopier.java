@@ -178,6 +178,7 @@ public abstract class AbstractCachedCopier implements Copier {
                     } else if (value instanceof Number) {
                         ignore = ((Number) value).equals(0);
                     }
+                    break;
                 }
                 case NULL: {
                     if (value == null) {
