@@ -106,17 +106,38 @@ public abstract class AbstractCachedCopier implements Copier {
      */
     protected final boolean shouldIgnore(ExtendedField extendedField, String[] ignoreConditions, Object target,
             Object source) {
-        boolean ignore = false;
+        boolean internalIgnore = false;
         CopyIgnore copyIgnore = extendedField.getCopyIgnore();
         if (copyIgnore != null) {
             String supplierMethodName = copyIgnore.supplierMethod();
+            String[] whenConditions = copyIgnore.when();
+            boolean whenConditionsEmpty = whenConditions.length == 1 && "".equals(whenConditions[0]);
+            String[] exceptConditions = copyIgnore.except();
+            boolean exceptConditionsEmpty = exceptConditions.length == 1 && "".equals(exceptConditions[0]);
+
+            if (!whenConditionsEmpty) {
+                internalIgnore = hasCondition(whenConditions, ignoreConditions) ? true : false;
+            }
+            if (!exceptConditionsEmpty) {
+                internalIgnore = hasCondition(exceptConditions, ignoreConditions) ? false : true;
+            }
             if (!supplierMethodName.equals("")) {
                 try {
-                    Method supplierMethod = extendedField.getDeclaringClass().getDeclaredMethod(supplierMethodName,
-                            Object.class);
+                    Method supplierMethod = null;
+                    boolean useInternalIngoreFirst = true;
+                    try {
+                        supplierMethod = extendedField.getDeclaringClass().getDeclaredMethod(supplierMethodName,
+                                Object.class, boolean.class);
+                        useInternalIngoreFirst = false;
+                    } catch (NoSuchMethodException e) {
+                        supplierMethod = extendedField.getDeclaringClass().getDeclaredMethod(supplierMethodName,
+                                Object.class);
+                    }
                     Class<?> returnType = supplierMethod.getReturnType();
                     if (returnType.equals(boolean.class) || returnType.equals(Boolean.class)) {
-                        return (boolean) supplierMethod.invoke(target, source);
+                        return useInternalIngoreFirst
+                                ? internalIgnore ? internalIgnore : (boolean) supplierMethod.invoke(target, source)
+                                : (boolean) supplierMethod.invoke(target, source, internalIgnore);
                     } else {
                         throw new InvokeIgnorePolicySupplierFailedException(
                                 "Failed to invoke ignore policy supplier method: " + supplierMethod.toGenericString()
@@ -128,21 +149,9 @@ public abstract class AbstractCachedCopier implements Copier {
                     throw new InvokeIgnorePolicySupplierFailedException(
                             "Failed to invoke ignore policy supplier method: " + e.getMessage(), e);
                 }
-            } else {
-                String[] whenConditions = copyIgnore.when();
-                boolean whenConditionsEmpty = whenConditions.length == 1 && "".equals(whenConditions[0]);
-                String[] exceptConditions = copyIgnore.except();
-                boolean exceptConditionsEmpty = exceptConditions.length == 1 && "".equals(exceptConditions[0]);
-
-                if (!whenConditionsEmpty) {
-                    ignore = hasCondition(whenConditions, ignoreConditions) ? true : false;
-                }
-                if (!exceptConditionsEmpty) {
-                    ignore = hasCondition(exceptConditions, ignoreConditions) ? false : true;
-                }
             }
         }
-        return ignore;
+        return internalIgnore;
     }
 
     @SuppressWarnings("rawtypes")
