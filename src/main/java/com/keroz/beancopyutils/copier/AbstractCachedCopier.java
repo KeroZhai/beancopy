@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.keroz.beancopyutils.annotation.CopyIgnore;
@@ -71,27 +72,29 @@ public abstract class AbstractCachedCopier implements Copier {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <SourceComponent, TargetComponent> Collection<TargetComponent> copyCollection(
-            Collection<SourceComponent> sourceCollection, Class<TargetComponent> targetComponentClass,
-            Class<? extends Collection<?>> collectionClass, IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+    public <SourceComponent, TargetComponent, SourceCollection extends Collection<SourceComponent>, TargetCollection extends Collection<TargetComponent>> TargetCollection copyCollection(
+            SourceCollection sourceCollection, Class<TargetComponent> targetComponentClass,
+            Supplier<TargetCollection> supplier, IgnorePolicy ignorePolicy, String[] ignoreConditions) {
         if (sourceCollection == null) {
             return null;
         }
-        Class<? extends Collection<TargetComponent>> sourceCollectionClass = (Class<? extends Collection<TargetComponent>>) (collectionClass != null
-                ? collectionClass
-                : sourceCollection.getClass().getName().equals("org.hibernate.collection.internal.PersistentBag")
-                        ? ArrayList.class
-                        : sourceCollection.getClass());
-        Collection<TargetComponent> targetCollection = sourceCollection.stream()
+
+        TargetCollection targetCollection = (TargetCollection) sourceCollection.stream()
                 .map(sourceComponent -> ReflectionUtils.isPrimitive(targetComponentClass)
                         ? targetComponentClass.cast(sourceComponent)
                         : copy(sourceComponent, targetComponentClass, ignorePolicy, ignoreConditions))
                 .collect(Collectors.toCollection(() -> {
                     try {
-                        return sourceCollectionClass.newInstance();
+                        if (supplier != null) {
+                            return supplier.get();
+                        } else if (sourceCollection.getClass().getName().equals("org.hibernate.collection.internal.PersistentBag")) {
+                            return new ArrayList<>();
+                        } else {
+                            return sourceCollection.getClass().newInstance();
+                        }
                     } catch (InstantiationException | IllegalAccessException e) {
                         throw new com.keroz.beancopyutils.exception.InstantiationException(
-                                "Failed to instantiate class: " + sourceCollectionClass.getName(), e);
+                                "Failed to instantiate class: " + sourceCollection.getClass().getName(), e);
                     }
                 }));
         return targetCollection;
@@ -99,7 +102,7 @@ public abstract class AbstractCachedCopier implements Copier {
 
     /**
      * 根据注解中的值和忽略条件确定是否忽略该属性
-     * 
+     *
      * @param copyIgnore       拷贝忽略注解
      * @param ignoreConditions 忽略条件
      * @return {@code true} 或 {@code false}
@@ -209,7 +212,7 @@ public abstract class AbstractCachedCopier implements Copier {
 
     /**
      * 获取缓存, 获取不到则新建
-     * 
+     *
      * @param clazz 类对象
      * @return 类对象对应的缓存
      */

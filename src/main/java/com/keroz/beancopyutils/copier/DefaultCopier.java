@@ -7,6 +7,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Supplier;
 
 import com.esotericsoftware.reflectasm.MethodAccess;
 import com.keroz.beancopyutils.annotation.CopyIgnore.IgnorePolicy;
@@ -28,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
  * A field reader or a field writer will be generated only when it's needed,
  * that's to say, a field reader/writer is generated only when getting/setting
  * its value.
- * 
+ *
  */
 @Slf4j
 public class DefaultCopier extends AbstractCachedCopier {
@@ -39,7 +40,7 @@ public class DefaultCopier extends AbstractCachedCopier {
     private static interface FieldReader {
         /**
          * Reads the field value from a source object.
-         * 
+         *
          * @param source the source object to read from
          * @return the field value
          */
@@ -52,7 +53,7 @@ public class DefaultCopier extends AbstractCachedCopier {
     private static interface FieldWriter {
         /**
          * Writes the field value into a target object.
-         * 
+         *
          * @param target           the target object to write into
          * @param source           the source object to read from
          * @param fieldReader      the field reader for the field
@@ -105,7 +106,7 @@ public class DefaultCopier extends AbstractCachedCopier {
 
     /**
      * 从缓存中获取指定字段的读方法
-     * 
+     *
      * @param source    源对象
      * @param fieldName 字段名
      */
@@ -304,7 +305,9 @@ public class DefaultCopier extends AbstractCachedCopier {
                         collectionClass = collectionClass != null ? collectionClass
                                 : !targetFieldClass.isInterface() ? targetFieldClass : null;
                         result = copyCollection((Collection) result, ReflectionUtils.getFieldGenericType(targetField),
-                                collectionClass, ignorePolicy, ignoreConditions);
+                                getSupplier(collectionClass, ReflectionUtils.getFieldGenericType(targetField)),
+                                ignorePolicy,
+                                ignoreConditions);
                     } else {
                         throw new TypeMismatchException(Collection.class, result.getClass());
                     }
@@ -318,6 +321,20 @@ public class DefaultCopier extends AbstractCachedCopier {
             }
         }
         return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <Component> Supplier<? extends Collection<Component>> getSupplier(
+            Class<? extends Collection<?>> collectionClass,
+            Class<Component> componentClass) {
+        return () -> {
+            try {
+                return (Collection<Component>) collectionClass.newInstance();
+            } catch (InstantiationException | IllegalAccessException e) {
+                e.printStackTrace();
+            }
+            return null;
+        };
     }
 
     @SuppressWarnings("rawtypes")
