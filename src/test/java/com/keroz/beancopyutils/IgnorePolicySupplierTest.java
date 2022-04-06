@@ -2,8 +2,10 @@ package com.keroz.beancopyutils;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.keroz.beancopyutils.annotation.CopyIgnore;
+import com.keroz.beancopyutils.exception.InvokeIgnorePolicySupplierFailedException;
 
 import org.junit.jupiter.api.Test;
 
@@ -38,10 +40,12 @@ public class IgnorePolicySupplierTest {
     @ToString
     public static class Target {
 
-        @CopyIgnore(supplierMethod = "ignorePayload")
+        public static final String IGNORE_PAYLOAD = "ignorePayload";
+
+        @CopyIgnore(when = IGNORE_PAYLOAD, supplierMethod = "shouldIgnorePayload")
         private Payload payload;
 
-        public boolean ignorePayload(Object source) {
+        public boolean shouldIgnorePayload(Object source) {
             if (source instanceof Source) {
                 return ((Source) source).getPayload().getIndex() == 0;
             }
@@ -52,7 +56,7 @@ public class IgnorePolicySupplierTest {
     @Test
     public void testIgnorePolicySupplier() {
         Source source1 = Source.builder().payload(Payload.builder().index(0).content("payload-0").build()).build();
-        Target target1 = BeanCopyUtils.copy(source1, Target.class);
+        Target target1 = BeanCopyUtils.copy(source1, Target.class, new String[] { Target.IGNORE_PAYLOAD });
         System.out.println(target1);
         assertNull(target1.getPayload());
         Source source2 = Source.builder().payload(Payload.builder().index(1).content("payload-1").build()).build();
@@ -73,7 +77,8 @@ public class IgnorePolicySupplierTest {
     @Test
     public void testInvalidIgnorePolicySupplier() {
         Source source = Source.builder().payload(Payload.builder().index(0).content("payload-0").build()).build();
-        BeanCopyUtils.copy(source, InvalidTarget.class);
+        assertThrows(InvokeIgnorePolicySupplierFailedException.class,
+                () -> BeanCopyUtils.copy(source, InvalidTarget.class));
     }
 
 }
