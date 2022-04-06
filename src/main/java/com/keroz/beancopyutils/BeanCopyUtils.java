@@ -8,7 +8,7 @@ import com.keroz.beancopyutils.copier.DefaultCopier;
 
 /**
  *
- * 
+ *
  */
 public class BeanCopyUtils {
 
@@ -22,7 +22,7 @@ public class BeanCopyUtils {
         copy(source, target, ignorePolicy, null);
     }
 
-    static <Target, Source> void copy(Source source, Target target, String[] ignoreConditions) {
+    public static <Target, Source> void copy(Source source, Target target, String[] ignoreConditions) {
         copy(source, target, null, ignoreConditions);
     }
 
