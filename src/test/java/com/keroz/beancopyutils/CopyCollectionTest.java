@@ -17,6 +17,7 @@ import com.keroz.beancopyutils.exception.TypeMismatchException;
 
 import org.junit.jupiter.api.Test;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.ToString;
 
@@ -39,7 +40,7 @@ public class CopyCollectionTest {
     }
 
     @Test
-    public void testCopyArray() {
+    public void testCopyArrayField() {
         assertThrows(TypeMismatchException.class, () -> {
             System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class));
         });
@@ -90,14 +91,51 @@ public class CopyCollectionTest {
     }
 
     @Test
-    public void testCopyCollection() {
+    public void testCopyCollectionField() {
         Target2 target = BeanCopyUtils.copy(new Source2(), Target2.class);
         System.out.println(target);
         assertTrue(ArrayList.class.equals(target.getIntArrayList3().getClass()));
         assertThrows(ClassCastException.class, () -> {
             BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_COMPONENT_MISMATCH });
         });
-        System.out.println(BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_CONTAINER_MISMATCH }));
+        System.out.println(
+                BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_CONTAINER_MISMATCH }));
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class Source3 {
+        private String name;
+    }
+
+    @Data
+    @ToString
+    public static class Target3 {
+        private String name;
+    }
+
+    @Test
+    public void testCopyBeanCollection() {
+        ArrayList<Source3> sourceArrayList = new ArrayList<>();
+        sourceArrayList.add(new Source3("A"));
+        sourceArrayList.add(new Source3("B"));
+        sourceArrayList.add(new Source3("C"));
+        sourceArrayList.add(new Source3("D"));
+        sourceArrayList.add(new Source3("E"));
+        ArrayList<Target3> targetArrayList = BeanCopyUtils.copyCollection(sourceArrayList, Target3.class);
+        assertTrue(targetArrayList.size() == sourceArrayList.size());
+        assertTrue(targetArrayList.get(0) instanceof Target3);
+        // Use supplier to supply a collection implementation which holds the copied elements.
+        LinkedList<Target3> targetLinkedList = BeanCopyUtils.copyCollection(sourceArrayList, Target3.class,
+                LinkedList::new);
+        assertTrue(targetLinkedList.size() == sourceArrayList.size());
+        assertTrue(targetLinkedList.get(0) instanceof Target3);
+        // If no supplier is provided, result will be of the same type as source
+        // collection, thus a ClassCastException will be thrown.
+        assertThrows(ClassCastException.class, () -> {
+            @SuppressWarnings("unused")
+            LinkedList<Target3> wrongType = BeanCopyUtils.copyCollection(sourceArrayList, Target3.class);
+        });
     }
 
 }
