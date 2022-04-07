@@ -3,6 +3,8 @@ package com.keroz.beancopy;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 
+import com.keroz.beancopy.util.JavaAssistUtils;
+
 import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -61,12 +63,10 @@ public class Main {
                         .invoke(null, source);
                 System.out.println(target);
             } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
 
         } catch (NotFoundException | SecurityException | IllegalArgumentException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
@@ -91,7 +91,7 @@ public class Main {
                     CtClass sourceFieldType = sourceField.getType();
 
                     // Check if fieldType is primitive or its corresponding wrapper class
-                    if (isPrimitiveOrWrapper(targetFieldType)) {
+                    if (JavaAssistUtils.isPrimitiveOrWrapper(targetFieldType)) {
                         bodyBuilder.append("target.").append(field.getName()).append(" = ").append("$1.")
                                 .append(field.getName()).append(";\n");
                     } else {
@@ -118,44 +118,8 @@ public class Main {
             sourceClass.addMethod(mapToTargetMethod);
             sourceClass.toClass();
         } catch (CannotCompileException | NotFoundException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
-    }
-
-    public static boolean isPrimitiveOrWrapper(CtClass ctClass) {
-        return ctClass.isPrimitive() || ctClass.isEnum() || isAssignable(ctClass, "java.lang.String")
-                || isAssignable(ctClass, "java.util.Date") || isAssignable(ctClass, "java.lang.Boolean")
-                || isAssignable(ctClass, "java.lang.Byte")
-                || isAssignable(ctClass, "java.lang.Character") || isAssignable(ctClass, "java.lang.Short")
-                || isAssignable(ctClass, "java.lang.Integer") || isAssignable(ctClass, "java.lang.Long")
-                || isAssignable(ctClass, "java.lang.Float") || isAssignable(ctClass, "java.lang.Double")
-                || isAssignable(ctClass, "java.lang.Void");
-    }
-
-    public static boolean isAssignable(CtClass thisClass, String anotherClassName) {
-        if (thisClass == null) {
-            return false;
-        }
-        if (thisClass.getName().equals(anotherClassName)) {
-            return true;
-        }
-        try {
-            // Check if extends
-            if (isAssignable(thisClass.getSuperclass(), anotherClassName)) {
-                return true;
-            }
-            // Check if implements
-            for (CtClass interfaceClass : thisClass.getInterfaces()) {
-                if (isAssignable(interfaceClass, anotherClassName)) {
-                    return true;
-                }
-            }
-        } catch (NotFoundException e) {
-            // keep going
-        }
-
-        return false;
     }
 
     private static String generateMapMethodNameFor(CtClass targetClass) {
