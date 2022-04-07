@@ -1,4 +1,4 @@
-package com.keroz.beancopy.util;
+package com.keroz.morphling.util;
 
 import javassist.ClassPool;
 import javassist.CtClass;

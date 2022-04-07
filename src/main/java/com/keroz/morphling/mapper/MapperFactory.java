@@ -1,10 +1,10 @@
-package com.keroz.beancopy.mapper;
+package com.keroz.morphling.mapper;
 
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 
-import com.keroz.beancopy.exception.MethodNotFoundException;
-import com.keroz.beancopy.util.JavassistUtils;
+import com.keroz.morphling.exception.MethodNotFoundException;
+import com.keroz.morphling.util.JavassistUtils;
 
 import javassist.CannotCompileException;
 import javassist.ClassPool;
@@ -21,7 +21,7 @@ import lombok.experimental.UtilityClass;
 public class MapperFactory {
 
     private ClassPool POOL = ClassPool.getDefault();
-    private CtClass mapperInterfaceCtClass = JavassistUtils.getCtClass(POOL, "com.keroz.beancopy.mapper.Mapper");
+    private CtClass mapperInterfaceCtClass = JavassistUtils.getCtClass(POOL, "com.keroz.morphling.mapper.Mapper");
     private CtClass objectCtClass = JavassistUtils.getCtClass(POOL, "java.lang.Object");
 
     @SuppressWarnings("rawtypes")
@@ -60,7 +60,7 @@ public class MapperFactory {
             String targetClassName = targetClass.getName();
             StringBuilder bodyBuilder = new StringBuilder("{\n");
             ClassSignature classSignature = new ClassSignature(null, null,
-                    new ClassType[] { new ClassType("com.keroz.beancopy.mapper.Mapper",
+                    new ClassType[] { new ClassType("com.keroz.morphling.mapper.Mapper",
                             new TypeArgument[] { new TypeArgument(new ClassType(sourceClass.getName())),
                                     new TypeArgument(new ClassType(targetClass.getName())) }) });
 
@@ -77,7 +77,7 @@ public class MapperFactory {
                 // Check if sourceClass has the field with the same name
                 if (sourceField != null) {
                     CtClass sourceFieldType = sourceField.getType();
-                    String getterPrefix = "java.lang.boolean".equals(sourceFieldType.getName()) ? "is" : "get";
+                    String getterPrefix = "boolean".equals(sourceFieldType.getName()) ? "is" : "get";
 
                     if (!sourceFieldType.isPrimitive()) {
                         bodyBuilder.append("Object sourceValue = $1.").append(getterPrefix).append(toProperCase(field.getName())).append("();\n")
@@ -100,6 +100,12 @@ public class MapperFactory {
                                     bodyBuilder.append("target.").append(setterName).append("($1.")
                                             .append(getterPrefix)
                                             .append(toProperCase(field.getName())).append("().byteValue());\n");
+                                    break;
+                                }
+                                case "java.lang.Character": {
+                                    bodyBuilder.append("target.").append(setterName).append("($1.")
+                                            .append(getterPrefix)
+                                            .append(toProperCase(field.getName())).append("().charValue());\n");
                                     break;
                                 }
                                 case "java.lang.Short": {
@@ -150,6 +156,12 @@ public class MapperFactory {
                                             .append(toProperCase(field.getName())).append("()));\n");
                                     break;
                                 }
+                                case "java.lang.Character": {
+                                    bodyBuilder.append("target.").append(setterName).append("(Character.valueOf($1.")
+                                            .append(getterPrefix)
+                                            .append(toProperCase(field.getName())).append("()));\n");
+                                    break;
+                                }
                                 case "java.lang.Short": {
                                     bodyBuilder.append("target.").append(setterName).append("(Short.valueOf($1.")
                                             .append(getterPrefix)
@@ -159,7 +171,7 @@ public class MapperFactory {
                                 case "java.lang.Integer": {
                                     bodyBuilder.append("target.").append(setterName).append("(Integer.valueOf($1.")
                                             .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("())));\n");
+                                            .append(toProperCase(field.getName())).append("()));\n");
                                     break;
                                 }
                                 case "java.lang.Long": {
@@ -208,7 +220,7 @@ public class MapperFactory {
                                         .append("java.lang.reflect.Array.set(targetArray, i, java.lang.reflect.Array.get(sourceArray, i));\n")
                                         .append("}");
                             } else {
-                                bodyBuilder.append("com.keroz.beancopy.mapper.Mapper mapper = ").append(MapperFactory.class.getName())
+                                bodyBuilder.append("com.keroz.morphling.mapper.Mapper mapper = ").append(MapperFactory.class.getName())
                                         .append(".getMapperFor(")
                                         .append(sourceComponentType.getName().replace("$", "."))
                                         .append(".class").append(",")

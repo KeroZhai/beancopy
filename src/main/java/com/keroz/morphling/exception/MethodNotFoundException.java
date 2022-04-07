@@ -1,4 +1,4 @@
-package com.keroz.beancopy.exception;
+package com.keroz.morphling.exception;
 
 public class MethodNotFoundException extends RuntimeException {
 
