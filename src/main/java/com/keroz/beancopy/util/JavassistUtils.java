@@ -1,5 +1,6 @@
 package com.keroz.beancopy.util;
 
+import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtField;
 import javassist.CtMethod;
@@ -7,7 +8,16 @@ import javassist.NotFoundException;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
-public class JavaAssistUtils {
+public class JavassistUtils {
+
+    public CtClass getCtClass(ClassPool pool, String className) {
+        try {
+            return pool.get(className);
+        } catch (NotFoundException ignored) {
+        }
+
+        return null;
+    }
 
     public CtField getDeclaredField(CtClass ctClass, String fieldName) {
         try {
@@ -55,6 +65,15 @@ public class JavaAssistUtils {
     public boolean isPrimitiveOrWrapper(CtClass ctClass) {
         return ctClass.isPrimitive() || ctClass.isEnum() || isAssignable(ctClass, "java.lang.String")
                 || isAssignable(ctClass, "java.util.Date") || isAssignable(ctClass, "java.lang.Boolean")
+                || isAssignable(ctClass, "java.lang.Byte")
+                || isAssignable(ctClass, "java.lang.Character") || isAssignable(ctClass, "java.lang.Short")
+                || isAssignable(ctClass, "java.lang.Integer") || isAssignable(ctClass, "java.lang.Long")
+                || isAssignable(ctClass, "java.lang.Float") || isAssignable(ctClass, "java.lang.Double")
+                || isAssignable(ctClass, "java.lang.Void");
+    }
+
+    public boolean isWrapper(CtClass ctClass) {
+        return isAssignable(ctClass, "java.lang.Boolean")
                 || isAssignable(ctClass, "java.lang.Byte")
                 || isAssignable(ctClass, "java.lang.Character") || isAssignable(ctClass, "java.lang.Short")
                 || isAssignable(ctClass, "java.lang.Integer") || isAssignable(ctClass, "java.lang.Long")
