@@ -1,9 +1,14 @@
 package com.keroz.morphling.mapper;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import com.keroz.morphling.exception.MethodNotFoundException;
+import com.keroz.morphling.exception.TypeMismatchException;
+import com.keroz.morphling.mapper.mapping.FieldMapper;
+import com.keroz.morphling.mapper.mapping.SimpleTypeFieldMapper;
 import com.keroz.morphling.util.JavassistUtils;
 
 import javassist.CannotCompileException;
@@ -23,6 +28,7 @@ public class MapperFactory {
     private ClassPool POOL = ClassPool.getDefault();
     private CtClass mapperInterfaceCtClass = JavassistUtils.getCtClass(POOL, "com.keroz.morphling.mapper.Mapper");
     private CtClass objectCtClass = JavassistUtils.getCtClass(POOL, "java.lang.Object");
+    private List<FieldMapper> fieldMappers = new ArrayList<>();
 
     @SuppressWarnings("rawtypes")
     private HashMap<String, Mapper> mapperMap = new HashMap<>();
@@ -60,7 +66,7 @@ public class MapperFactory {
             String targetClassName = targetClass.getName();
             StringBuilder bodyBuilder = new StringBuilder("{\n");
             ClassSignature classSignature = new ClassSignature(null, null,
-                    new ClassType[] { new ClassType("com.keroz.morphling.mapper.Mapper",
+                    new ClassType[] { new ClassType(Mapper.class.getName(),
                             new TypeArgument[] { new TypeArgument(new ClassType(sourceClass.getName())),
                                     new TypeArgument(new ClassType(targetClass.getName())) }) });
 
@@ -78,64 +84,67 @@ public class MapperFactory {
                 if (sourceField != null) {
                     CtClass sourceFieldType = sourceField.getType();
                     String getterPrefix = "boolean".equals(sourceFieldType.getName()) ? "is" : "get";
+                    String capitalizedFieldName = capitalize(fieldName);
+                    String getterName = getterPrefix + capitalizedFieldName;
+                    String setterName = "set" + capitalizedFieldName;
+
+
 
                     if (!sourceFieldType.isPrimitive()) {
-                        bodyBuilder.append("Object sourceValue = $1.").append(getterPrefix).append(toProperCase(field.getName())).append("();\n")
-                        .append("if (sourceValue != null) {\n");
+                        bodyBuilder.append("Object sourceValue = $1.").append(getterName).append("();\n")
+                                .append("if (sourceValue != null) {\n");
                     }
 
                     // Check if fieldType is primitive or its corresponding wrapper class
                     if (JavassistUtils.isPrimitiveOrWrapper(targetFieldType)) {
-                        String setterName = "set" + toProperCase(field.getName());
-
                         if (!sourceFieldType.isPrimitive() && targetFieldType.isPrimitive()) {
                             switch (sourceFieldType.getName()) {
                                 case "java.lang.Boolean": {
                                     bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("().booleanValue());\n");
+                                            .append(getterName)
+                                            .append("().booleanValue());\n");
                                     break;
                                 }
                                 case "java.lang.Byte": {
                                     bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("().byteValue());\n");
+                                            .append(getterName)
+                                            .append("().byteValue());\n");
                                     break;
                                 }
                                 case "java.lang.Character": {
                                     bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("().charValue());\n");
+                                            .append(getterName)
+                                            .append("().charValue());\n");
                                     break;
                                 }
                                 case "java.lang.Short": {
                                     bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("().shortValue());\n");
+                                            .append(getterName)
+                                            .append("().shortValue());\n");
                                     break;
                                 }
                                 case "java.lang.Integer": {
                                     bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("().intValue());\n");
+                                            .append(getterName)
+                                            .append("().intValue());\n");
                                     break;
                                 }
                                 case "java.lang.Long": {
                                     bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("().longValue());\n");
+                                            .append(getterName)
+                                            .append("().longValue());\n");
                                     break;
                                 }
                                 case "java.lang.Float": {
                                     bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("().floatValue());\n");
+                                            .append(getterName)
+                                            .append("().floatValue());\n");
                                     break;
                                 }
                                 case "java.lang.Double": {
                                     bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("().doubleValue());\n");
+                                            .append(getterName)
+                                            .append("().doubleValue());\n");
                                     break;
                                 }
                                 default:
@@ -146,50 +155,50 @@ public class MapperFactory {
                             switch (targetFieldType.getName()) {
                                 case "java.lang.Boolean": {
                                     bodyBuilder.append("target.").append(setterName).append("(Boolean.valueOf($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("()));\n");
+                                            .append(getterName)
+                                            .append("()));\n");
                                     break;
                                 }
                                 case "java.lang.Byte": {
                                     bodyBuilder.append("target.").append(setterName).append("(Byte.valueOf($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("()));\n");
+                                            .append(getterName)
+                                            .append("()));\n");
                                     break;
                                 }
                                 case "java.lang.Character": {
                                     bodyBuilder.append("target.").append(setterName).append("(Character.valueOf($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("()));\n");
+                                            .append(getterName)
+                                            .append("()));\n");
                                     break;
                                 }
                                 case "java.lang.Short": {
                                     bodyBuilder.append("target.").append(setterName).append("(Short.valueOf($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("()));\n");
+                                            .append(getterName)
+                                            .append("()));\n");
                                     break;
                                 }
                                 case "java.lang.Integer": {
                                     bodyBuilder.append("target.").append(setterName).append("(Integer.valueOf($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("()));\n");
+                                            .append(getterName)
+                                            .append("()));\n");
                                     break;
                                 }
                                 case "java.lang.Long": {
                                     bodyBuilder.append("target.").append(setterName).append("(Long.valueOf($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("()));\n");
+                                            .append(getterName)
+                                            .append("()));\n");
                                     break;
                                 }
                                 case "java.lang.Float": {
                                     bodyBuilder.append("target.").append(setterName).append("(Float.valueOf($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("()));\n");
+                                            .append(getterName)
+                                            .append("()));\n");
                                     break;
                                 }
                                 case "java.lang.Double": {
                                     bodyBuilder.append("target.").append(setterName).append("(Double.valueOf($1.")
-                                            .append(getterPrefix)
-                                            .append(toProperCase(field.getName())).append("()));\n");
+                                            .append(getterName)
+                                            .append("()));\n");
                                     break;
                                 }
                                 default:
@@ -198,9 +207,11 @@ public class MapperFactory {
                         } else if (sourceFieldType.getName().equals(targetFieldType.getName())) {
                             bodyBuilder.append("target.").append(setterName).append("($1.")
                                     .append(getterPrefix)
-                                    .append(toProperCase(field.getName())).append("());\n");
+                                    .append(capitalize(field.getName())).append("());\n");
                         } else {
-                            // throw exception
+                            throw new TypeMismatchException("Field " + fieldName + " in class "
+                                    + sourceClass.getName() + " is of type " + sourceFieldType.getName()
+                                    + " but the target field is of type " + targetFieldType.getName());
                         }
                     } else if (targetFieldType.isArray()) {
                         if (sourceFieldType.isArray()) {
@@ -208,7 +219,7 @@ public class MapperFactory {
                             CtClass targetComponentType = targetFieldType.getComponentType();
 
                             bodyBuilder
-                                    .append("{Object sourceArray = $1.get").append(toProperCase(field.getName()))
+                                    .append("{Object sourceArray = $1.get").append(capitalize(field.getName()))
                                     .append("();\n")
                                     .append("int length = java.lang.reflect.Array.getLength(sourceArray);\n")
                                     .append("Object targetArray = java.lang.reflect.Array.newInstance(")
@@ -220,7 +231,8 @@ public class MapperFactory {
                                         .append("java.lang.reflect.Array.set(targetArray, i, java.lang.reflect.Array.get(sourceArray, i));\n")
                                         .append("}");
                             } else {
-                                bodyBuilder.append("com.keroz.morphling.mapper.Mapper mapper = ").append(MapperFactory.class.getName())
+                                bodyBuilder.append("com.keroz.morphling.mapper.Mapper mapper = ")
+                                        .append(MapperFactory.class.getName())
                                         .append(".getMapperFor(")
                                         .append(sourceComponentType.getName().replace("$", "."))
                                         .append(".class").append(",")
@@ -232,26 +244,31 @@ public class MapperFactory {
                             }
 
                             bodyBuilder.append("} catch (IllegalArgumentException ignored) {}\n")
-                                    .append("target.set").append(toProperCase(field.getName())).append("((")
-                                    .append(targetComponentType.getName().replace("$", ".")).append("[]) targetArray);}\n");
+                                    .append("target.set").append(capitalize(field.getName())).append("((")
+                                    .append(targetComponentType.getName().replace("$", "."))
+                                    .append("[]) targetArray);}\n");
 
                         } else {
-                            // throw exception
+                            throw new TypeMismatchException("Field " + fieldName + " in class "
+                                    + sourceClass.getName() + " is of type " + sourceFieldType.getName()
+                                    + " but the target field is of type " + targetFieldType.getName());
                         }
+
+                    } else if (JavassistUtils.isAssignable(targetFieldType, "java.util.Collection")) {
 
                     } else {
                         String sourceFieldTypeName = sourceFieldType.getName().replace("$",
                                 ".");
                         String targetFieldTypeName = targetFieldType.getName().replace("$",
                                 ".");
-                        bodyBuilder.append("target.set").append(toProperCase(field.getName())).append("((")
+                        bodyBuilder.append("target.set").append(capitalize(field.getName())).append("((")
                                 .append(targetFieldTypeName).append(") ")
                                 .append(MapperFactory.class.getName()).append(".getMapperFor(")
                                 .append(sourceFieldTypeName)
                                 .append(".class").append(",")
                                 .append(targetFieldTypeName)
                                 .append(".class").append(")").append(".map")
-                                .append("($1.get").append(toProperCase(field.getName())).append("()));\n");
+                                .append("($1.get").append(capitalize(field.getName())).append("()));\n");
                     }
 
                     if (!sourceFieldType.isPrimitive()) {
@@ -296,12 +313,12 @@ public class MapperFactory {
         String[] parts = className.split("\\.");
         String camelCaseString = "";
         for (String part : parts) {
-            camelCaseString = camelCaseString + toProperCase(part);
+            camelCaseString = camelCaseString + capitalize(part);
         }
         return camelCaseString;
     }
 
-    private String toProperCase(String part) {
+    private String capitalize(String part) {
         return part.substring(0, 1).toUpperCase() + part.substring(1);
     }
 
