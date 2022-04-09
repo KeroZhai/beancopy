@@ -18,6 +18,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MapperIgnore {
 
+    Class<?>[] includedGroup() default {};
+
+    Class<?>[] excludedGroup() default {};
+
     IgnorePolicy policy() default IgnorePolicy.DEFAULT;
 
     enum IgnorePolicy {
@@ -34,4 +38,5 @@ public @interface MapperIgnore {
          */
         DEFAULT;
     }
+
 }

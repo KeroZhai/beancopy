@@ -26,7 +26,10 @@ public class MapperIgnoreTest {
 
     @Data
     public static class Target {
-        @MapperIgnore
+
+        public static interface IgnoreName {}
+
+        @MapperIgnore(includedGroup = IgnoreName.class)
         private String name;
         @MapperIgnore(policy = IgnorePolicy.NULL)
         private String nullValue = "nonNullValue";
