@@ -1,56 +1,75 @@
 package com.keroz.morphling.mapper;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
+import com.keroz.morphling.codegenerator.ArrayTypeConversionCodeGenerator;
+import com.keroz.morphling.codegenerator.CollectionTypeConversionCodeGenerator;
+import com.keroz.morphling.codegenerator.ConversionCodeGenerator;
+import com.keroz.morphling.codegenerator.NestedTypeConversionCodeGenerator;
+import com.keroz.morphling.codegenerator.SimpleTypeConversionCodeGenerator;
 import com.keroz.morphling.exception.MethodNotFoundException;
-import com.keroz.morphling.exception.TypeMismatchException;
-import com.keroz.morphling.mapper.mapping.FieldMapper;
-import com.keroz.morphling.mapper.mapping.SimpleTypeFieldMapper;
 import com.keroz.morphling.util.JavassistUtils;
+import com.keroz.morphling.util.ReflectionUtils;
+import com.keroz.morphling.util.StringUtils;
 
 import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtField;
 import javassist.CtMethod;
-import javassist.NotFoundException;
 import javassist.bytecode.SignatureAttribute.ClassSignature;
 import javassist.bytecode.SignatureAttribute.ClassType;
 import javassist.bytecode.SignatureAttribute.TypeArgument;
-import lombok.experimental.UtilityClass;
 
-@UtilityClass
-public class MapperFactory {
+/**
+ * 123
+ */
+public final class MapperFactory {
 
+    private final String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     private ClassPool POOL = ClassPool.getDefault();
     private CtClass mapperInterfaceCtClass = JavassistUtils.getCtClass(POOL, "com.keroz.morphling.mapper.Mapper");
     private CtClass objectCtClass = JavassistUtils.getCtClass(POOL, "java.lang.Object");
-    private List<FieldMapper> fieldMappers = new ArrayList<>();
+    private List<ConversionCodeGenerator> conversionCodeGenerators = new ArrayList<>();
 
     @SuppressWarnings("rawtypes")
     private HashMap<String, Mapper> mapperMap = new HashMap<>();
 
-    public <Source, Target> Mapper<Source, Target> getMapperFor(Class<Source> sourceClass, Class<Target> targetClass) {
-        CtClass sourceCtClass = JavassistUtils.getCtClass(POOL, sourceClass.getName());
-        CtClass targetCtClass = JavassistUtils.getCtClass(POOL, targetClass.getName());
+    public MapperFactory() {
+        POOL.importPackage("com.keroz.morphling.mapper");
+    }
 
-        return getMapperFor(sourceCtClass, targetCtClass);
+    public static MapperFactory defaultMapperFactory() {
+        MapperFactory instance = new MapperFactory();
+
+        instance.addConversionCodeGenerator(new SimpleTypeConversionCodeGenerator());
+        instance.addConversionCodeGenerator(new ArrayTypeConversionCodeGenerator());
+        instance.addConversionCodeGenerator(new CollectionTypeConversionCodeGenerator());
+        instance.addConversionCodeGenerator(new NestedTypeConversionCodeGenerator());
+
+        return instance;
     }
 
     @SuppressWarnings("unchecked")
-    public <Source, Target> Mapper<Source, Target> getMapperFor(CtClass sourceCtClass, CtClass targetCtClass) {
-        String mapperClassName = generateMapperClassNameFor(sourceCtClass, targetCtClass);
+    public <Source, Target> Mapper<Source, Target> getMapperFor(Class<Source> sourceClass, Class<Target> targetClass) {
+        String mapperClassName = generateMapperClassNameFor(sourceClass, targetClass);
 
         Mapper<Source, Target> mapper = mapperMap.get(mapperClassName);
 
         if (mapper == null) {
             try {
-                mapper = (Mapper<Source, Target>) generateMapperClassFor(sourceCtClass, targetCtClass).newInstance();
+                mapper = (Mapper<Source, Target>) generateMapperClassFor(sourceClass, targetClass).newInstance();
+                mapper.getClass().getDeclaredField("mapperFactory").set(mapper, this);
                 mapperMap.put(mapperClassName, mapper);
-            } catch (InstantiationException | IllegalAccessException e) {
+            } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | NoSuchFieldException
+                    | SecurityException e) {
                 e.printStackTrace();
             }
         }
@@ -58,11 +77,18 @@ public class MapperFactory {
         return mapper;
     }
 
-    public Class<?> generateMapperClassFor(CtClass sourceClass, CtClass targetClass) {
+    public Class<?> generateMapperClassFor(Class<?> sourceClass, Class<?> targetClass) {
+        CtClass sourceCtClass = JavassistUtils.getCtClass(POOL, sourceClass.getName());
+        CtClass targetCtClass = JavassistUtils.getCtClass(POOL, targetClass.getName());
+
         try {
             CtClass mapperCtClass = POOL.makeClass(generateMapperClassNameFor(sourceClass, targetClass));
-            CtMethod mapMethod = new CtMethod(targetClass,
-                    "map", new CtClass[] { sourceClass }, mapperCtClass);
+            CtField mapperFactoryField = new CtField(JavassistUtils.getCtClass(POOL, getClass().getName()),
+                    "mapperFactory", mapperCtClass);
+            mapperFactoryField.setModifiers(Modifier.PUBLIC);
+            mapperCtClass.addField(mapperFactoryField);
+            CtMethod mapMethod = new CtMethod(targetCtClass,
+                    "map", new CtClass[] { sourceCtClass }, mapperCtClass);
             String targetClassName = targetClass.getName();
             StringBuilder bodyBuilder = new StringBuilder("{\n");
             ClassSignature classSignature = new ClassSignature(null, null,
@@ -75,211 +101,43 @@ public class MapperFactory {
             mapMethod.setModifiers(Modifier.PUBLIC);
             bodyBuilder.append(targetClassName).append(" target = new ").append(targetClassName).append("();\n");
 
-            for (CtField field : targetClass.getDeclaredFields()) {
-                String fieldName = field.getName();
-                CtClass targetFieldType = field.getType();
-                CtField sourceField = JavassistUtils.getDeclaredField(sourceClass, fieldName);
+            for (Field targetField : targetClass.getDeclaredFields()) {
+                String fieldName = targetField.getName();
+                Type targetFieldType = targetField.getGenericType();
+                Field sourceField = ReflectionUtils.findDeclaredField(sourceClass, fieldName);
 
                 // Check if sourceClass has the field with the same name
                 if (sourceField != null) {
-                    CtClass sourceFieldType = sourceField.getType();
-                    String getterPrefix = "boolean".equals(sourceFieldType.getName()) ? "is" : "get";
-                    String capitalizedFieldName = capitalize(fieldName);
+                    Type sourceFieldType = sourceField.getGenericType();
+                    String getterPrefix = "boolean".equals(sourceFieldType.getTypeName()) ? "is" : "get";
+                    String capitalizedFieldName = StringUtils.capitalize(fieldName);
                     String getterName = getterPrefix + capitalizedFieldName;
-                    String setterName = "set" + capitalizedFieldName;
+                    String setter = "target.set" + capitalizedFieldName;
+                    String sourceValue = "$1." + getterName + "()";
 
+                    String sourceFieldNonGenericTypeName = getNonGenericTypeName(sourceFieldType);
+                    String targetFieldNonGenericTypeName = getNonGenericTypeName(targetFieldType);
 
+                    for (ConversionCodeGenerator codeGenerator : conversionCodeGenerators) {
+                        if (codeGenerator.isSupported(sourceFieldType, targetFieldType)) {
+                            String code = codeGenerator.generate(sourceFieldType, targetFieldType);
 
-                    if (!sourceFieldType.isPrimitive()) {
-                        bodyBuilder.append("Object sourceValue = $1.").append(getterName).append("();\n")
-                                .append("if (sourceValue != null) {\n");
-                    }
-
-                    // Check if fieldType is primitive or its corresponding wrapper class
-                    if (JavassistUtils.isPrimitiveOrWrapper(targetFieldType)) {
-                        if (!sourceFieldType.isPrimitive() && targetFieldType.isPrimitive()) {
-                            switch (sourceFieldType.getName()) {
-                                case "java.lang.Boolean": {
-                                    bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterName)
-                                            .append("().booleanValue());\n");
-                                    break;
-                                }
-                                case "java.lang.Byte": {
-                                    bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterName)
-                                            .append("().byteValue());\n");
-                                    break;
-                                }
-                                case "java.lang.Character": {
-                                    bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterName)
-                                            .append("().charValue());\n");
-                                    break;
-                                }
-                                case "java.lang.Short": {
-                                    bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterName)
-                                            .append("().shortValue());\n");
-                                    break;
-                                }
-                                case "java.lang.Integer": {
-                                    bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterName)
-                                            .append("().intValue());\n");
-                                    break;
-                                }
-                                case "java.lang.Long": {
-                                    bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterName)
-                                            .append("().longValue());\n");
-                                    break;
-                                }
-                                case "java.lang.Float": {
-                                    bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterName)
-                                            .append("().floatValue());\n");
-                                    break;
-                                }
-                                case "java.lang.Double": {
-                                    bodyBuilder.append("target.").append(setterName).append("($1.")
-                                            .append(getterName)
-                                            .append("().doubleValue());\n");
-                                    break;
-                                }
-                                default:
-                                    break;
+                            if (code != null) {
+                                bodyBuilder.append("{").append(sourceFieldNonGenericTypeName).append(" sv = ")
+                                        .append(sourceValue).append(";").append(targetFieldNonGenericTypeName)
+                                        .append(" tv;").append(code)
+                                        .append(setter).append("(tv);").append("}\n");
                             }
 
-                        } else if (sourceFieldType.isPrimitive() && !targetFieldType.isPrimitive()) {
-                            switch (targetFieldType.getName()) {
-                                case "java.lang.Boolean": {
-                                    bodyBuilder.append("target.").append(setterName).append("(Boolean.valueOf($1.")
-                                            .append(getterName)
-                                            .append("()));\n");
-                                    break;
-                                }
-                                case "java.lang.Byte": {
-                                    bodyBuilder.append("target.").append(setterName).append("(Byte.valueOf($1.")
-                                            .append(getterName)
-                                            .append("()));\n");
-                                    break;
-                                }
-                                case "java.lang.Character": {
-                                    bodyBuilder.append("target.").append(setterName).append("(Character.valueOf($1.")
-                                            .append(getterName)
-                                            .append("()));\n");
-                                    break;
-                                }
-                                case "java.lang.Short": {
-                                    bodyBuilder.append("target.").append(setterName).append("(Short.valueOf($1.")
-                                            .append(getterName)
-                                            .append("()));\n");
-                                    break;
-                                }
-                                case "java.lang.Integer": {
-                                    bodyBuilder.append("target.").append(setterName).append("(Integer.valueOf($1.")
-                                            .append(getterName)
-                                            .append("()));\n");
-                                    break;
-                                }
-                                case "java.lang.Long": {
-                                    bodyBuilder.append("target.").append(setterName).append("(Long.valueOf($1.")
-                                            .append(getterName)
-                                            .append("()));\n");
-                                    break;
-                                }
-                                case "java.lang.Float": {
-                                    bodyBuilder.append("target.").append(setterName).append("(Float.valueOf($1.")
-                                            .append(getterName)
-                                            .append("()));\n");
-                                    break;
-                                }
-                                case "java.lang.Double": {
-                                    bodyBuilder.append("target.").append(setterName).append("(Double.valueOf($1.")
-                                            .append(getterName)
-                                            .append("()));\n");
-                                    break;
-                                }
-                                default:
-                                    break;
-                            }
-                        } else if (sourceFieldType.getName().equals(targetFieldType.getName())) {
-                            bodyBuilder.append("target.").append(setterName).append("($1.")
-                                    .append(getterPrefix)
-                                    .append(capitalize(field.getName())).append("());\n");
-                        } else {
-                            throw new TypeMismatchException("Field " + fieldName + " in class "
-                                    + sourceClass.getName() + " is of type " + sourceFieldType.getName()
-                                    + " but the target field is of type " + targetFieldType.getName());
+                            break;
                         }
-                    } else if (targetFieldType.isArray()) {
-                        if (sourceFieldType.isArray()) {
-                            CtClass sourceComponentType = sourceFieldType.getComponentType();
-                            CtClass targetComponentType = targetFieldType.getComponentType();
-
-                            bodyBuilder
-                                    .append("{Object sourceArray = $1.get").append(capitalize(field.getName()))
-                                    .append("();\n")
-                                    .append("int length = java.lang.reflect.Array.getLength(sourceArray);\n")
-                                    .append("Object targetArray = java.lang.reflect.Array.newInstance(")
-                                    .append(targetComponentType.getName()).append(".class, length);\n")
-                                    .append("try {\n");
-
-                            if (sourceComponentType.isPrimitive() || targetComponentType.isPrimitive()) {
-                                bodyBuilder.append("for (int i = 0; i < length; i++) {\n")
-                                        .append("java.lang.reflect.Array.set(targetArray, i, java.lang.reflect.Array.get(sourceArray, i));\n")
-                                        .append("}");
-                            } else {
-                                bodyBuilder.append("com.keroz.morphling.mapper.Mapper mapper = ")
-                                        .append(MapperFactory.class.getName())
-                                        .append(".getMapperFor(")
-                                        .append(sourceComponentType.getName().replace("$", "."))
-                                        .append(".class").append(",")
-                                        .append(targetComponentType.getName().replace("$", "."))
-                                        .append(".class").append(");\n")
-                                        .append("for (int i = 0; i < length; i++) {\n")
-                                        .append("java.lang.reflect.Array.set(targetArray, i, mapper.map(java.lang.reflect.Array.get(sourceArray, i)));\n")
-                                        .append("}\n");
-                            }
-
-                            bodyBuilder.append("} catch (IllegalArgumentException ignored) {}\n")
-                                    .append("target.set").append(capitalize(field.getName())).append("((")
-                                    .append(targetComponentType.getName().replace("$", "."))
-                                    .append("[]) targetArray);}\n");
-
-                        } else {
-                            throw new TypeMismatchException("Field " + fieldName + " in class "
-                                    + sourceClass.getName() + " is of type " + sourceFieldType.getName()
-                                    + " but the target field is of type " + targetFieldType.getName());
-                        }
-
-                    } else if (JavassistUtils.isAssignable(targetFieldType, "java.util.Collection")) {
-
-                    } else {
-                        String sourceFieldTypeName = sourceFieldType.getName().replace("$",
-                                ".");
-                        String targetFieldTypeName = targetFieldType.getName().replace("$",
-                                ".");
-                        bodyBuilder.append("target.set").append(capitalize(field.getName())).append("((")
-                                .append(targetFieldTypeName).append(") ")
-                                .append(MapperFactory.class.getName()).append(".getMapperFor(")
-                                .append(sourceFieldTypeName)
-                                .append(".class").append(",")
-                                .append(targetFieldTypeName)
-                                .append(".class").append(")").append(".map")
-                                .append("($1.get").append(capitalize(field.getName())).append("()));\n");
-                    }
-
-                    if (!sourceFieldType.isPrimitive()) {
-                        bodyBuilder.append("}\n");
                     }
                 }
 
             }
             bodyBuilder.append("return target;\n");
             String body = bodyBuilder.append("}").toString();
-            // System.out.println(body);
+            System.out.println(body);
             mapMethod.setBody(body);
             mapperCtClass.addMethod(mapMethod);
 
@@ -293,11 +151,10 @@ public class MapperFactory {
             mapperCtClass.detach();
 
             return mapperClass;
-        } catch (CannotCompileException | NotFoundException e) {
+        } catch (CannotCompileException e) {
             e.printStackTrace();
 
             if (e.getMessage().contains("not found")) {
-
                 throw new MethodNotFoundException(e.getMessage() + ". Did you forget to provide it?");
             }
         }
@@ -305,21 +162,23 @@ public class MapperFactory {
         return null;
     }
 
-    private String generateMapperClassNameFor(CtClass sourceCtClass, CtClass targeCtClass) {
-        return toCamelCase(sourceCtClass.getName()) + "To" + toCamelCase(targeCtClass.getName()) + "Mapper";
+    public void addConversionCodeGenerator(ConversionCodeGenerator generator) {
+        conversionCodeGenerators.add(generator);
     }
 
-    private String toCamelCase(String className) {
-        String[] parts = className.split("\\.");
-        String camelCaseString = "";
-        for (String part : parts) {
-            camelCaseString = camelCaseString + capitalize(part);
+    private String generateMapperClassNameFor(Class<?> sourceClass, Class<?> targetClass) {
+
+        return StringUtils.classNameToPascalCase(sourceClass.getName()) + "To"
+                + StringUtils.classNameToPascalCase(targetClass.getName()) + "Mapper$" + uniqueId;
+    }
+
+    private String getNonGenericTypeName(Type type) {
+        String typeName = type.getTypeName();
+
+        if (type instanceof ParameterizedType) {
+            return typeName.substring(0, typeName.indexOf("<"));
         }
-        return camelCaseString;
-    }
 
-    private String capitalize(String part) {
-        return part.substring(0, 1).toUpperCase() + part.substring(1);
+        return typeName;
     }
-
 }

@@ -62,9 +62,8 @@ public class JavassistUtils {
         return false;
     }
 
-    public boolean isPrimitiveOrWrapper(CtClass ctClass) {
-        return ctClass.isPrimitive() || ctClass.isEnum() || isAssignable(ctClass, "java.lang.String")
-                || isAssignable(ctClass, "java.util.Date") || isAssignable(ctClass, "java.lang.Boolean")
+    public boolean isPrimitiveOrWrapperType(CtClass ctClass) {
+        return ctClass.isPrimitive() || isAssignable(ctClass, "java.lang.Boolean")
                 || isAssignable(ctClass, "java.lang.Byte")
                 || isAssignable(ctClass, "java.lang.Character") || isAssignable(ctClass, "java.lang.Short")
                 || isAssignable(ctClass, "java.lang.Integer") || isAssignable(ctClass, "java.lang.Long")
@@ -79,6 +78,14 @@ public class JavassistUtils {
                 || isAssignable(ctClass, "java.lang.Integer") || isAssignable(ctClass, "java.lang.Long")
                 || isAssignable(ctClass, "java.lang.Float") || isAssignable(ctClass, "java.lang.Double")
                 || isAssignable(ctClass, "java.lang.Void");
+    }
+
+    public boolean isCollection(CtClass ctClass) {
+        return isAssignable(ctClass, "java.util.Collection");
+    }
+
+    public boolean isMap(CtClass ctClass) {
+        return isAssignable(ctClass, "java.util.Map");
     }
 
 }

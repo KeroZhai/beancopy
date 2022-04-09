@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Date;
 
+import com.keroz.morphling.codegenerator.SimpleTypeConversionCodeGenerator;
 import com.keroz.morphling.mapper.Mapper;
 import com.keroz.morphling.mapper.MapperFactory;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import lombok.Data;
@@ -52,10 +54,17 @@ public class SimpleTypeMappingTest {
         private Date dateValue;
     }
 
+    private static MapperFactory mapperFactory = new MapperFactory();
+
+    @BeforeAll
+    public static void beforeAll() {
+        mapperFactory.addConversionCodeGenerator(new SimpleTypeConversionCodeGenerator());
+    }
+
     @Test
     public void testMapping1() {
         Source1 source = new Source1();
-        Mapper<Source1, Target1> mapper = MapperFactory.getMapperFor(Source1.class, Target1.class);
+        Mapper<Source1, Target1> mapper = mapperFactory.getMapperFor(Source1.class, Target1.class);
         Target1 target = mapper.map(source);
 
         assertEquals(target.isBooleanValue(), source.isBooleanValue());
@@ -98,7 +107,7 @@ public class SimpleTypeMappingTest {
     @Test
     public void testMapping2() {
         Source2 source = new Source2();
-        Mapper<Source2, Target2> mapper = MapperFactory.getMapperFor(Source2.class, Target2.class);
+        Mapper<Source2, Target2> mapper = mapperFactory.getMapperFor(Source2.class, Target2.class);
         Target2 target = mapper.map(source);
 
         assertEquals(target.isBooleanValue(), source.getBooleanValue());
@@ -110,7 +119,7 @@ public class SimpleTypeMappingTest {
         assertEquals(target.getFloatValue(), source.getFloatValue());
         assertEquals(target.getDoubleValue(), source.getDoubleValue());
 
-        Mapper<Target2, Source2> reverseMapper = MapperFactory.getMapperFor(Target2.class, Source2.class);
+        Mapper<Target2, Source2> reverseMapper = mapperFactory.getMapperFor(Target2.class, Source2.class);
         target.setBooleanValue(false);
 
         Source2 target2 = reverseMapper.map(target);
