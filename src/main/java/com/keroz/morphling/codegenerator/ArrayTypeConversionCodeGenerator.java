@@ -41,9 +41,9 @@ public class ArrayTypeConversionCodeGenerator implements ConversionCodeGenerator
 
         if (sourceComponentTypeSimple && targetComponentTypeSimple) {
             // both are of simple type
-            builder.append("for (int i = 0; i < length; i++) {\n")
+            builder.append("for (int i = 0; i < length; i++) {")
                     // use reflection to avoid manually boxing and unboxing
-                    .append("java.lang.reflect.Array.set(tv, i, java.lang.reflect.Array.get(sv, i));\n")
+                    .append("java.lang.reflect.Array.set(tv, i, java.lang.reflect.Array.get(sv, i));")
                     .append("}");
         } else if (!sourceComponentTypeSimple && !targetComponentTypeSimple) {
             if (ReflectionUtils.isCollectionType(sourceComponentType)
@@ -58,10 +58,10 @@ public class ArrayTypeConversionCodeGenerator implements ConversionCodeGenerator
                     .append(sourceComponentType.getName())
                     .append(".class").append(",")
                     .append(targetComponentType.getName())
-                    .append(".class").append(");\n")
-                    .append("for (int i = 0; i < length; i++) {\n")
-                    .append("java.lang.reflect.Array.set(tv, i, mapper.map(java.lang.reflect.Array.get(sv, i)));\n")
-                    .append("}\n");
+                    .append(".class").append(");")
+                    .append("for (int i = 0; i < length; i++) {")
+                    .append("java.lang.reflect.Array.set(tv, i, mapper.map(java.lang.reflect.Array.get(sv, i)));")
+                    .append("}");
         } else {
             return null;
         }

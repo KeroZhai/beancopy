@@ -1,5 +1,6 @@
 package com.keroz.morphling.util;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -89,6 +90,28 @@ public class ReflectionUtils {
             return Void.class;
 
         return primitiveType;
+    }
+
+    public boolean isEmpty(Object value) {
+        if (value == null) {
+            return true;
+        } else if (value instanceof Number) {
+            return ((Number) value).intValue() == 0;
+        } else if (value instanceof CharSequence) {
+            return ((CharSequence) value).length() == 0;
+        } else if (value instanceof Collection) {
+            return ((Collection<?>) value).isEmpty();
+        } else if (value instanceof Map) {
+            return ((Map<?, ?>) value).isEmpty();
+        } else if (value.getClass().isArray()) {
+            return Array.getLength(value) == 0;
+        }
+
+        return false;
+    }
+
+    public boolean isNotEmpty(Object value) {
+        return !isEmpty(value);
     }
 
 }
