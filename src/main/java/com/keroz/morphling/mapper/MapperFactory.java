@@ -17,6 +17,7 @@ import com.keroz.morphling.codegenerator.CollectionTypeConversionCodeGenerator;
 import com.keroz.morphling.codegenerator.ConversionCodeGenerator;
 import com.keroz.morphling.codegenerator.NestedTypeConversionCodeGenerator;
 import com.keroz.morphling.codegenerator.SimpleTypeConversionCodeGenerator;
+import com.keroz.morphling.converter.Converter;
 import com.keroz.morphling.exception.MethodNotFoundException;
 import com.keroz.morphling.util.JavassistUtils;
 import com.keroz.morphling.util.ReflectionUtils;
@@ -43,7 +44,9 @@ public final class MapperFactory {
     private List<ConversionCodeGenerator> conversionCodeGenerators = new ArrayList<>();
 
     @SuppressWarnings("rawtypes")
-    private HashMap<String, Mapper> mapperMap = new HashMap<>();
+    private HashMap<String, Mapper> generatedMapperMap = new HashMap<>();
+    @SuppressWarnings("rawtypes")
+    private HashMap<String, Converter> converterMap = new HashMap<>();
 
     public MapperFactory() {
         POOL.importPackage("com.keroz.morphling.mapper");
@@ -65,13 +68,13 @@ public final class MapperFactory {
     public <Source, Target> Mapper<Source, Target> getMapperFor(Class<Source> sourceClass, Class<Target> targetClass) {
         String mapperClassName = generateMapperClassNameFor(sourceClass, targetClass);
 
-        Mapper<Source, Target> mapper = mapperMap.get(mapperClassName);
+        Mapper<Source, Target> mapper = generatedMapperMap.get(mapperClassName);
 
         if (mapper == null) {
             try {
                 mapper = (Mapper<Source, Target>) generateMapperClassFor(sourceClass, targetClass).newInstance();
                 mapper.getClass().getDeclaredField("mapperFactory").set(mapper, this);
-                mapperMap.put(mapperClassName, mapper);
+                generatedMapperMap.put(mapperClassName, mapper);
             } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | NoSuchFieldException
                     | SecurityException e) {
                 e.printStackTrace();
@@ -129,9 +132,45 @@ public final class MapperFactory {
                     String getterName = getterPrefix + capitalizedSourceFieldName;
                     String setter = "target.set" + capitalizedTargetFieldName;
                     String sourceValue = "$1." + getterName + "()";
-
                     String sourceFieldNonGenericTypeName = getNonGenericTypeName(sourceFieldType);
                     String targetFieldNonGenericTypeName = getNonGenericTypeName(targetFieldType);
+
+                    // check if converter specified
+                    com.keroz.morphling.annotation.Converter converterAnnotation = targetField
+                            .getAnnotation(com.keroz.morphling.annotation.Converter.class);
+
+                    if (converterAnnotation != null) {
+                        Class<? extends Converter<?, ?>> converterClass = converterAnnotation.value();
+                        String className = converterClass.getName();
+                        Converter<?, ?> converter = converterMap.get(className);
+
+                        if (converter == null) {
+                            try {
+                                converter = (Converter<?, ?>) converterClass.newInstance();
+                                converterMap.put(className, converter);
+                            } catch (InstantiationException | IllegalAccessException e) {
+                                e.printStackTrace();
+                            }
+
+                            // use converter to convert value
+                            bodyBuilder.append("{ ").append(setter).append("((").append(targetFieldNonGenericTypeName)
+                                    .append(") mapperFactory.getConverter(\"")
+                                    .append(className)
+                                    .append("\").convert(");
+
+                            // boxing for primitive types
+                            if (ReflectionUtils.isPrimitiveType(sourceFieldType)) {
+                                bodyBuilder
+                                        .append(ReflectionUtils.toWrapper(sourceFieldType).getName())
+                                        .append(".valueOf(")
+                                        .append(sourceValue).append("), mapperFactory)); }");
+                            } else {
+                                bodyBuilder
+                                        .append(sourceValue).append("), mapperFactory); }");
+                            }
+                            continue;
+                        }
+                    }
 
                     MapperIgnore mapperIgnoreAnnotation = targetField.getAnnotation(MapperIgnore.class);
                     IgnorePolicy ignorePolicy = null;
@@ -213,6 +252,10 @@ public final class MapperFactory {
 
     public void addConversionCodeGenerator(ConversionCodeGenerator generator) {
         conversionCodeGenerators.add(generator);
+    }
+
+    public Converter<?, ?> getConverter(String converterClassName) {
+        return converterMap.get(converterClassName);
     }
 
     private String generateMapperClassNameFor(Class<?> sourceClass, Class<?> targetClass) {

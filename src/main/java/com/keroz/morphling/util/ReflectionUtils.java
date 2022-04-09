@@ -101,6 +101,14 @@ public class ReflectionUtils {
         return toClass(((ParameterizedType) type).getRawType());
     }
 
+    public boolean isPrimitiveType(Type type) {
+        if (type instanceof Class) {
+            return ((Class<?>) type).isPrimitive();
+        }
+
+        return false;
+    }
+
     public boolean isPrimitiveOrWrapperType(Type type) {
         return toClass(type).isPrimitive() || Boolean.class.equals(type) || Byte.class.equals(type)
                 || Character.class.equals(type) || Short.class.equals(type) || Integer.class.equals(type)
@@ -125,9 +133,11 @@ public class ReflectionUtils {
         return Map.class.isAssignableFrom(toClass(type));
     }
 
-    public Class<?> toWrapper(Class<?> primitiveType) {
-        if (!primitiveType.isPrimitive())
-            return primitiveType;
+    public Class<?> toWrapper(Type primitiveType) {
+        Class<?> clazz = toClass(primitiveType);
+
+        if (!clazz.isPrimitive())
+            return clazz;
 
         if (primitiveType == Integer.TYPE)
             return Integer.class;
@@ -148,7 +158,7 @@ public class ReflectionUtils {
         if (primitiveType == Void.TYPE)
             return Void.class;
 
-        return primitiveType;
+        return clazz;
     }
 
     public boolean isEmpty(Object value) {
