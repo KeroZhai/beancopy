@@ -106,10 +106,10 @@ public final class MapperFactory {
             mapMethod.setModifiers(Modifier.PUBLIC);
             bodyBuilder.append(targetClassName).append(" target = $2;\n");
 
-            for (Field targetField : targetClass.getDeclaredFields()) {
+            for (Field targetField : ReflectionUtils.getDeclaredAndInheritedFields(targetClass)) {
                 String fieldName = targetField.getName();
                 Type targetFieldType = targetField.getGenericType();
-                Field sourceField = ReflectionUtils.findDeclaredField(sourceClass, fieldName);
+                Field sourceField = ReflectionUtils.findDeclaredOrInheritedField(sourceClass, fieldName);
 
                 // Check if sourceClass has the field with the same name
                 if (sourceField != null) {

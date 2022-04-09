@@ -5,20 +5,67 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class ReflectionUtils {
 
+    public List<Field> getDeclaredAndInheritedFields(Class<?> declaringClass) {
+        List<Field> fields = new ArrayList<>();
+        Set<String> fieldNames = new HashSet<>();
+
+        while (declaringClass != Object.class) {
+            for (Field field : declaringClass.getDeclaredFields()) {
+                if (fieldNames.add(field.getName())) {
+                    fields.add(field);
+                }
+            }
+
+            declaringClass = declaringClass.getSuperclass();
+        }
+
+        return fields;
+    }
+
+    public List<Method> getDeclaredAndInheritedMethods(Class<?> declaringClass) {
+        List<Method> methods = new ArrayList<>();
+
+        while (declaringClass != Object.class) {
+            // TODO remove duplicated
+            methods.addAll(Arrays.asList(declaringClass.getDeclaredMethods()));
+
+            declaringClass = declaringClass.getSuperclass();
+        }
+
+        return methods;
+    }
+
     public Field findDeclaredField(Class<?> declaringClass, String fieldName) {
+        Field field = null;
         try {
-            return declaringClass.getDeclaredField(fieldName);
-        } catch (NoSuchFieldException | SecurityException e) {
-            e.printStackTrace();
+            field = declaringClass.getDeclaredField(fieldName);
+        } catch (NoSuchFieldException | SecurityException ignored) {
+        }
+
+        return field;
+    }
+
+    public Field findDeclaredOrInheritedField(Class<?> declaringClass, String fieldName) {
+        while (declaringClass != Object.class) {
+            try {
+                return declaringClass.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException | SecurityException ignored) {
+                declaringClass = declaringClass.getSuperclass();
+            }
         }
 
         return null;
@@ -27,8 +74,20 @@ public class ReflectionUtils {
     public Method findDeclaredMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
         try {
             return declaringClass.getDeclaredMethod(methodName, parameterTypes);
-        } catch (NoSuchMethodException | SecurityException e) {
-            e.printStackTrace();
+        } catch (NoSuchMethodException | SecurityException ignored) {
+        }
+
+        return null;
+    }
+
+    public Method findDeclaredOrInheritedMethod(Class<?> declaringClass, String methodName,
+            Class<?>... parameterTypes) {
+        while (declaringClass != Object.class) {
+            try {
+                return declaringClass.getDeclaredMethod(methodName, parameterTypes);
+            } catch (NoSuchMethodException | SecurityException ignored) {
+                declaringClass = declaringClass.getSuperclass();
+            }
         }
 
         return null;
