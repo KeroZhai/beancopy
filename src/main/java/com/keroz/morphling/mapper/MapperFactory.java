@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
+import com.keroz.morphling.annotation.AliasFor;
 import com.keroz.morphling.annotation.MapperIgnore;
 import com.keroz.morphling.annotation.MapperIgnore.IgnorePolicy;
 import com.keroz.morphling.codegenerator.ArrayTypeConversionCodeGenerator;
@@ -107,17 +108,26 @@ public final class MapperFactory {
             bodyBuilder.append(targetClassName).append(" target = $2;\n");
 
             for (Field targetField : ReflectionUtils.getDeclaredAndInheritedFields(targetClass)) {
-                String fieldName = targetField.getName();
+                String targetFieldName = targetField.getName();
+                String sourceFieldName = targetFieldName;
                 Type targetFieldType = targetField.getGenericType();
-                Field sourceField = ReflectionUtils.findDeclaredOrInheritedField(sourceClass, fieldName);
+
+                AliasFor aliasForAnnotation = targetField.getAnnotation(AliasFor.class);
+
+                if (aliasForAnnotation != null) {
+                    sourceFieldName = aliasForAnnotation.value();
+                }
+
+                Field sourceField = ReflectionUtils.findDeclaredOrInheritedField(sourceClass, sourceFieldName);
 
                 // Check if sourceClass has the field with the same name
                 if (sourceField != null) {
                     Type sourceFieldType = sourceField.getGenericType();
                     String getterPrefix = "boolean".equals(sourceFieldType.getTypeName()) ? "is" : "get";
-                    String capitalizedFieldName = StringUtils.capitalize(fieldName);
-                    String getterName = getterPrefix + capitalizedFieldName;
-                    String setter = "target.set" + capitalizedFieldName;
+                    String capitalizedSourceFieldName = StringUtils.capitalize(sourceFieldName);
+                    String capitalizedTargetFieldName = StringUtils.capitalize(targetFieldName);
+                    String getterName = getterPrefix + capitalizedSourceFieldName;
+                    String setter = "target.set" + capitalizedTargetFieldName;
                     String sourceValue = "$1." + getterName + "()";
 
                     String sourceFieldNonGenericTypeName = getNonGenericTypeName(sourceFieldType);
