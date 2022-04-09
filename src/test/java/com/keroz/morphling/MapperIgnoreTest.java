@@ -5,7 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.keroz.morphling.annotation.MapperIgnore;
-import com.keroz.morphling.annotation.MapperIgnore.IgnorePolicy;
+import com.keroz.morphling.annotation.MapperIgnore.Included;
+import com.keroz.morphling.annotation.MapperIgnore.Policy;
 import com.keroz.morphling.mapper.Mapper;
 import com.keroz.morphling.mapper.MapperFactory;
 
@@ -27,13 +28,13 @@ public class MapperIgnoreTest {
     @Data
     public static class Target {
 
-        public static interface IgnoreName {}
+        public static interface CopyName extends Included {}
 
-        @MapperIgnore(includedGroup = IgnoreName.class)
+        @MapperIgnore(groups = CopyName.class)
         private String name;
-        @MapperIgnore(policy = IgnorePolicy.NULL)
+        @MapperIgnore(policy = Policy.IGNORE_NULL)
         private String nullValue = "nonNullValue";
-        @MapperIgnore(policy = IgnorePolicy.EMPTY)
+        @MapperIgnore(policy = Policy.IGNORE_EMPTY)
         private String emptyValue = "nonEmptyValue";
     }
 

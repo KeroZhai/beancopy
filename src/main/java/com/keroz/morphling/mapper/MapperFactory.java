@@ -11,7 +11,9 @@ import java.util.UUID;
 
 import com.keroz.morphling.annotation.AliasFor;
 import com.keroz.morphling.annotation.MapperIgnore;
-import com.keroz.morphling.annotation.MapperIgnore.IgnorePolicy;
+import com.keroz.morphling.annotation.MapperIgnore.Excluded;
+import com.keroz.morphling.annotation.MapperIgnore.Policy;
+import com.keroz.morphling.annotation.MapperIgnore.Included;
 import com.keroz.morphling.codegenerator.ArrayTypeConversionCodeGenerator;
 import com.keroz.morphling.codegenerator.CollectionTypeConversionCodeGenerator;
 import com.keroz.morphling.codegenerator.ConversionCodeGenerator;
@@ -87,6 +89,7 @@ public final class MapperFactory {
     public Class<?> generateMapperClassFor(Class<?> sourceClass, Class<?> targetClass) {
         CtClass sourceCtClass = JavassistUtils.getCtClass(POOL, sourceClass.getName());
         CtClass targetCtClass = JavassistUtils.getCtClass(POOL, targetClass.getName());
+        CtClass groupsCtClass = JavassistUtils.getCtClass(POOL, Class[].class.getName());
 
         try {
             CtClass mapperCtClass = POOL.makeClass(generateMapperClassNameFor(sourceClass, targetClass));
@@ -97,7 +100,7 @@ public final class MapperFactory {
             mapperCtClass.addField(mapperFactoryField);
 
             CtMethod mapMethod = new CtMethod(CtClass.voidType,
-                    "map", new CtClass[] { sourceCtClass, targetCtClass }, mapperCtClass);
+                    "map", new CtClass[] { sourceCtClass, targetCtClass, groupsCtClass }, mapperCtClass);
             String targetClassName = targetClass.getName();
             StringBuilder bodyBuilder = new StringBuilder("{\n");
             ClassSignature classSignature = new ClassSignature(null, null,
@@ -135,6 +138,54 @@ public final class MapperFactory {
                     String sourceFieldNonGenericTypeName = getNonGenericTypeName(sourceFieldType);
                     String targetFieldNonGenericTypeName = getNonGenericTypeName(targetFieldType);
 
+                    MapperIgnore mapperIgnoreAnnotation = targetField.getAnnotation(MapperIgnore.class);
+                    Class<?>[] groups = null;
+                    Policy ignorePolicy = null;
+                    boolean hasGroups = false;
+
+                    if (mapperIgnoreAnnotation != null) {
+                        ignorePolicy = mapperIgnoreAnnotation.policy();
+                        groups = mapperIgnoreAnnotation.groups();
+                        hasGroups = groups.length > 0;
+
+                        if (!hasGroups && ignorePolicy == Policy.DEFAULT) {
+                            continue;
+                        } else {
+                            bodyBuilder.append("{boolean shouldIgnore = false;");
+
+                            if (hasGroups) {
+                                Class<?> lastGroup = groups[groups.length - 1];
+
+                                bodyBuilder.append("if ($3 != null && $3.length > 0) {")
+                                        .append("for (int i = 0; i < $3.length; i++) {")
+                                        .append("if ($3[i] == ").append(lastGroup.getName()).append(".class) { ")
+                                        .append("shouldIgnore = ").append(Excluded.class.isAssignableFrom(lastGroup))
+                                        .append("; break; }}} else { shouldIgnore = ")
+                                        .append(Included.class.isAssignableFrom(lastGroup)).append("; }");
+                            }
+
+                            bodyBuilder.append(sourceFieldNonGenericTypeName).append(" sv = ")
+                                    .append(sourceValue).append(";");
+                            switch (ignorePolicy) {
+                                case IGNORE_NULL: {
+                                    bodyBuilder.append("shouldIgnore = shouldIgnore || sv == null;");
+                                    break;
+                                }
+                                case IGNORE_EMPTY: {
+                                    bodyBuilder.append("shouldIgnore = shouldIgnore || ReflectionUtils.isEmpty(sv);");
+                                    break;
+                                }
+                                default: {
+                                    break;
+                                }
+                            }
+                            bodyBuilder.append("if (!shouldIgnore) {");
+                        }
+                    } else {
+                        bodyBuilder.append("{{").append(sourceFieldNonGenericTypeName).append(" sv = ")
+                                .append(sourceValue).append(";");
+                    }
+
                     // check if converter specified
                     com.keroz.morphling.annotation.Converter converterAnnotation = targetField
                             .getAnnotation(com.keroz.morphling.annotation.Converter.class);
@@ -153,7 +204,7 @@ public final class MapperFactory {
                             }
 
                             // use converter to convert value
-                            bodyBuilder.append("{ ").append(setter).append("((").append(targetFieldNonGenericTypeName)
+                            bodyBuilder.append(setter).append("((").append(targetFieldNonGenericTypeName)
                                     .append(") mapperFactory.getConverter(\"")
                                     .append(className)
                                     .append("\").convert(");
@@ -163,22 +214,11 @@ public final class MapperFactory {
                                 bodyBuilder
                                         .append(ReflectionUtils.toWrapper(sourceFieldType).getName())
                                         .append(".valueOf(")
-                                        .append(sourceValue).append("), mapperFactory)); }");
+                                        .append(sourceValue).append("), mapperFactory));");
                             } else {
                                 bodyBuilder
-                                        .append(sourceValue).append("), mapperFactory); }");
+                                        .append(sourceValue).append("), mapperFactory);");
                             }
-                            continue;
-                        }
-                    }
-
-                    MapperIgnore mapperIgnoreAnnotation = targetField.getAnnotation(MapperIgnore.class);
-                    IgnorePolicy ignorePolicy = null;
-
-                    if (mapperIgnoreAnnotation != null) {
-                        ignorePolicy = mapperIgnoreAnnotation.policy();
-
-                        if (ignorePolicy == IgnorePolicy.DEFAULT) {
                             continue;
                         }
                     }
@@ -188,28 +228,16 @@ public final class MapperFactory {
                             String code = codeGenerator.generate(sourceFieldType, targetFieldType);
 
                             if (code != null) {
-                                if (mapperIgnoreAnnotation != null) {
-                                    bodyBuilder.append("{").append(sourceFieldNonGenericTypeName).append(" sv = ")
-                                            .append(sourceValue).append(";");
-
-                                    if ((ignorePolicy == IgnorePolicy.NULL)) {
-                                        bodyBuilder.append("if (sv != null) {");
-                                    } else {
-                                        bodyBuilder.append("if (ReflectionUtils.isNotEmpty(sv)) {");
-                                    }
-                                } else {
-                                    bodyBuilder.append("{").append(sourceFieldNonGenericTypeName).append(" sv = ")
-                                            .append(sourceValue).append(";{");
-                                }
-
                                 bodyBuilder.append(targetFieldNonGenericTypeName)
                                         .append(" tv;").append(code)
-                                        .append(setter).append("(tv);}}\n");
+                                        .append(setter).append("(tv);\n");
                             }
 
                             break;
                         }
                     }
+
+                    bodyBuilder.append("}}");
                 }
             }
 
@@ -219,14 +247,15 @@ public final class MapperFactory {
             mapperCtClass.addMethod(mapMethod);
 
             CtMethod bridgeMethod = new CtMethod(CtClass.voidType,
-                    "map", new CtClass[] { objectCtClass, objectCtClass }, mapperCtClass);
+                    "map", new CtClass[] { objectCtClass, objectCtClass, groupsCtClass }, mapperCtClass);
 
-            bridgeMethod.setBody("{ map((" + sourceClass.getName() + ") $1, (" + targetClass.getName() + ") $2); }");
+            bridgeMethod
+                    .setBody("{ map((" + sourceClass.getName() + ") $1, (" + targetClass.getName() + ") $2, $3); }");
             mapperCtClass.addMethod(bridgeMethod);
 
             CtMethod mapMethod2 = new CtMethod(targetCtClass, "map", new CtClass[] { sourceCtClass }, mapperCtClass);
             mapMethod2.setBody("{ " + targetClassName + " target = new " + targetClassName
-                    + "(); map($1, target); return target; }");
+                    + "(); map($1, target, null); return target; }");
             mapperCtClass.addMethod(mapMethod2);
 
             CtMethod bridgeMethod2 = new CtMethod(objectCtClass,
@@ -234,6 +263,29 @@ public final class MapperFactory {
 
             bridgeMethod2.setBody("{ return map((" + sourceClass.getName() + ") $1); }");
             mapperCtClass.addMethod(bridgeMethod2);
+
+            CtMethod mapMethod3 = new CtMethod(targetCtClass, "map", new CtClass[] { sourceCtClass, groupsCtClass },
+                    mapperCtClass);
+            mapMethod3.setBody("{ " + targetClassName + " target = new " + targetClassName
+                    + "(); map($1, target, $2); return target; }");
+            mapperCtClass.addMethod(mapMethod3);
+
+            CtMethod bridgeMethod3 = new CtMethod(objectCtClass,
+                    "map", new CtClass[] { objectCtClass, groupsCtClass }, mapperCtClass);
+
+            bridgeMethod3.setBody("{ return map((" + sourceClass.getName() + ") $1, $2); }");
+            mapperCtClass.addMethod(bridgeMethod3);
+
+            CtMethod mapMethod4 = new CtMethod(CtClass.voidType, "map", new CtClass[] { sourceCtClass, targetCtClass },
+                    mapperCtClass);
+            mapMethod4.setBody("{ map($1, $2, null); }");
+            mapperCtClass.addMethod(mapMethod4);
+
+            CtMethod bridgeMethod4 = new CtMethod(CtClass.voidType,
+                    "map", new CtClass[] { objectCtClass, objectCtClass }, mapperCtClass);
+
+            bridgeMethod4.setBody("{ map((" + sourceClass.getName() + ") $1, (" + targetClass.getName() + ") $2); }");
+            mapperCtClass.addMethod(bridgeMethod4);
 
             Class<?> mapperClass = mapperCtClass.toClass();
             mapperCtClass.detach();

@@ -10,33 +10,37 @@ import java.lang.annotation.Target;
  * Annotated field will always be ignored during mapping by default. However,
  * you can specify a policy to change the behavior.
  *
- * @see IgnorePolicy#NULL
- * @see IgnorePolicy#EMPTY
+ * @see Policy#IGNORE_NULL
+ * @see Policy#IGNORE_EMPTY
  */
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MapperIgnore {
 
-    Class<?>[] includedGroup() default {};
+    Class<? extends Group>[] groups() default {};
 
-    Class<?>[] excludedGroup() default {};
+    Policy policy() default Policy.DEFAULT;
 
-    IgnorePolicy policy() default IgnorePolicy.DEFAULT;
-
-    enum IgnorePolicy {
+    enum Policy {
         /**
          * Ignore the field if source value is {@code null}.
          */
-        NULL,
+        IGNORE_NULL,
         /**
          * Ignore the field if source value is empty.
          */
-        EMPTY,
+        IGNORE_EMPTY,
         /**
          * Default.
          */
         DEFAULT;
     }
+
+    interface Group {}
+
+    interface Included extends Group {}
+
+    interface Excluded extends Group {}
 
 }
