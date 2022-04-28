@@ -329,7 +329,9 @@ public class DefaultCopier extends AbstractCachedCopier {
             Class<Component> componentClass) {
         return () -> {
             try {
-                return (Collection<Component>) collectionClass.newInstance();
+                if (collectionClass != null) {
+                    return (Collection<Component>) collectionClass.newInstance();
+                }
             } catch (InstantiationException | IllegalAccessException e) {
                 e.printStackTrace();
             }
