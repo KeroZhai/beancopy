@@ -86,8 +86,14 @@ public abstract class AbstractCachedCopier implements Copier {
                 .collect(Collectors.toCollection(() -> {
                     try {
                         if (supplier != null) {
-                            return supplier.get();
-                        } else if (sourceCollection.getClass().getName().equals("org.hibernate.collection.internal.PersistentBag")) {
+                            TargetCollection instance = supplier.get();
+
+                            if (instance != null) {
+                                return instance;
+                            }
+                        }
+
+                        if (sourceCollection.getClass().getName().equals("org.hibernate.collection.internal.PersistentBag")) {
                             return new ArrayList<>();
                         } else {
                             return sourceCollection.getClass().newInstance();
