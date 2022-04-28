@@ -16,23 +16,23 @@ import java.lang.annotation.Target;
  * with {@code CopyIgnore} <i>may</i> never be ignored during copying.
  * <p>
  * The example below shows how to use this annotation.
- * 
+ *
  * <pre>
  * {@code
  * public class Foo {
  *     public static final String COPY_WITHOUT_ID = "copyWithoutID";
  *     public static final String COPY_WITH_NAME = "copyWithName";
- * 
+ *
  *     {@literal @}CopyIgnore(when = COPY_WITHOUT_ID)
  *     public int id;
  *     {@literal @}CopyIgnore(except = COPY_WITH_NAME)
  *     public String name;
  * }}
  * </pre>
- * 
+ *
  * The two {@code String} constants serve as conditions, which can be specified
  * by providing an array when copying.
- * 
+ *
  * <pre>
  * {@code
  *     Foo source = new Foo();
@@ -44,20 +44,20 @@ import java.lang.annotation.Target;
  *     Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID, Foo.COPY_WITH_NAME });
  * }
  * </pre>
- * 
+ *
  * And the result comes out as below.
- * 
+ *
  * <ul>
  * <li>target1: id = 1, name = null</li>
  * <li>target1: id = 0, name = null</li>
  * <li>target2: id = 1, name = "foo"</li>
  * <li>target3: id = 0, name = "foo"</li>
  * </ul>
- * 
+ *
  * It is recommanded to declare {@code String} condtions as
  * {@code public static} so that they will be ignored. It's also a good practice
  * to make them unique, otherwise, the result may not meet expectations.
- * 
+ *
  * @see IgnorePolicy
  */
 @Documented
@@ -65,9 +65,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CopyIgnore {
 
-    String[] when() default "";
+    Class<?>[] when() default {};
 
-    String[] except() default "";
+    Class<?>[] except() default {};
 
     IgnorePolicy policy() default IgnorePolicy.DEFAULT;
 

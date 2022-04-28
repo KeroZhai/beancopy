@@ -26,13 +26,13 @@ public class IgnoreConditionTest {
     @ToString
     public static class Target1 {
 
-        public static final String COPY_WITHOUT_ID = "copyWithoutID";
+        public static interface CopyWithoutID {}
 
-        public static final String COPY_WITH_NAME = "copyWithName";
+        public static interface CopyWithName {}
 
-        @CopyIgnore(when = COPY_WITHOUT_ID)
+        @CopyIgnore(when = CopyWithoutID.class)
         private int id;
-        @CopyIgnore(except = COPY_WITH_NAME)
+        @CopyIgnore(except = CopyWithName.class)
         private String name;
         private Target2 obj;
     }
@@ -41,10 +41,10 @@ public class IgnoreConditionTest {
     @ToString
     public static class Target2 {
 
-        public static final String COPY_WITHOUT_NAME = "copyTarget2WithoutName";
+        public static interface CopyWithoutName {}
 
         private int id;
-        @CopyIgnore(when = COPY_WITHOUT_NAME)
+        @CopyIgnore(when = CopyWithoutName.class)
         private String name;
     }
 
@@ -52,12 +52,12 @@ public class IgnoreConditionTest {
     public void testIgnoreWhen() {
         System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class));
         System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class,
-                new String[] { Target1.COPY_WITHOUT_ID, Target2.COPY_WITHOUT_NAME }));
+                new Class<?>[] { Target1.CopyWithoutID.class, Target2.CopyWithoutName.class }));
     }
 
     @Test
     public void testIgnoreExcept() {
         System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class));
-        System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class, new String[] { Target1.COPY_WITH_NAME }));
+        System.out.println(BeanCopyUtils.copy(new Source1(), Target1.class, new Class<?>[] { Target1.CopyWithName.class }));
     }
 }

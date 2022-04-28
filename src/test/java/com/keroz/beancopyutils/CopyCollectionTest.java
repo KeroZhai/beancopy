@@ -67,8 +67,11 @@ public class CopyCollectionTest {
     @ToString
     public static class Target2 {
 
-        public static final String TEST_COMPONENT_MISMATCH = "testComponnetMismatch";
-        public static final String TEST_CONTAINER_MISMATCH = "testContainerMismatch";
+        public static interface TestComponentMismatch {
+        }
+
+        public static interface TestContainerMismatch {
+        }
 
         private ArrayList<Integer> intArrayList;
         private LinkedList<Integer> intLinkedList;
@@ -76,10 +79,10 @@ public class CopyCollectionTest {
         private List<Integer> intList1;
         @AliasFor("intLinkedList")
         private List<Integer> intList2;
-        @CopyIgnore(except = TEST_COMPONENT_MISMATCH)
+        @CopyIgnore(except = TestComponentMismatch.class)
         @AliasFor("intArrayList")
         private List<String> stringList; // This will cause a ClassCastException to be thrown
-        @CopyIgnore(except = TEST_CONTAINER_MISMATCH)
+        @CopyIgnore(except = TestContainerMismatch.class)
         @AliasFor("intLinkedList")
         private ArrayList<Integer> intArrayList2;
         @AliasFor("intLinkedList")
@@ -96,10 +99,11 @@ public class CopyCollectionTest {
         System.out.println(target);
         assertTrue(ArrayList.class.equals(target.getIntArrayList3().getClass()));
         assertThrows(ClassCastException.class, () -> {
-            BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_COMPONENT_MISMATCH });
+            BeanCopyUtils.copy(new Source2(), Target2.class, new Class<?>[] { Target2.TestComponentMismatch.class });
         });
         System.out.println(
-                BeanCopyUtils.copy(new Source2(), Target2.class, new String[] { Target2.TEST_CONTAINER_MISMATCH }));
+                BeanCopyUtils.copy(new Source2(), Target2.class,
+                        new Class<?>[] { Target2.TestContainerMismatch.class }));
     }
 
     @Data
@@ -125,7 +129,8 @@ public class CopyCollectionTest {
         ArrayList<Target3> targetArrayList = BeanCopyUtils.copyCollection(sourceArrayList, Target3.class);
         assertTrue(targetArrayList.size() == sourceArrayList.size());
         assertTrue(targetArrayList.get(0) instanceof Target3);
-        // Use supplier to supply a collection implementation which holds the copied elements.
+        // Use supplier to supply a collection implementation which holds the copied
+        // elements.
         LinkedList<Target3> targetLinkedList = BeanCopyUtils.copyCollection(sourceArrayList, Target3.class,
                 LinkedList::new);
         assertTrue(targetLinkedList.size() == sourceArrayList.size());

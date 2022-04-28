@@ -40,9 +40,10 @@ public class IgnorePolicySupplierTest {
     @ToString
     public static class Target {
 
-        public static final String IGNORE_PAYLOAD = "ignorePayload";
+        public static interface IgnorePayload {
+        }
 
-        @CopyIgnore(when = IGNORE_PAYLOAD, supplierMethod = "shouldIgnorePayload")
+        @CopyIgnore(when = IgnorePayload.class, supplierMethod = "shouldIgnorePayload")
         private Payload payload;
 
         public boolean shouldIgnorePayload(Object source) {
@@ -56,7 +57,7 @@ public class IgnorePolicySupplierTest {
     @Test
     public void testIgnorePolicySupplier() {
         Source source1 = Source.builder().payload(Payload.builder().index(0).content("payload-0").build()).build();
-        Target target1 = BeanCopyUtils.copy(source1, Target.class, new String[] { Target.IGNORE_PAYLOAD });
+        Target target1 = BeanCopyUtils.copy(source1, Target.class, new Class<?>[] { Target.IgnorePayload.class });
         System.out.println(target1);
         assertNull(target1.getPayload());
         Source source2 = Source.builder().payload(Payload.builder().index(1).content("payload-1").build()).build();

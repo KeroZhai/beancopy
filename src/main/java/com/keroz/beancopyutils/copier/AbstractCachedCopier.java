@@ -30,7 +30,7 @@ public abstract class AbstractCachedCopier implements Copier {
 
     @Override
     public <Source, Target> Target copy(Source source, Class<Target> targetClass, IgnorePolicy ignorePolicy,
-            String[] ignoreConditions) {
+            Class<?>[] ignoreConditions) {
         if (source == null) {
             return null;
         }
@@ -50,7 +50,7 @@ public abstract class AbstractCachedCopier implements Copier {
 
     @Override
     public Object copyArray(Object sourceArray, Class<?> targetComponentClass, IgnorePolicy ignorePolicy,
-            String[] ignoreConditions) {
+            Class<?>[] ignoreConditions) {
         int length = Array.getLength(sourceArray);
         Object targetArray = Array.newInstance(targetComponentClass, length);
         try {
@@ -74,7 +74,7 @@ public abstract class AbstractCachedCopier implements Copier {
     @Override
     public <SourceComponent, TargetComponent, SourceCollection extends Collection<SourceComponent>, TargetCollection extends Collection<TargetComponent>> TargetCollection copyCollection(
             SourceCollection sourceCollection, Class<TargetComponent> targetComponentClass,
-            Supplier<TargetCollection> supplier, IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+            Supplier<TargetCollection> supplier, IgnorePolicy ignorePolicy, Class<?>[] ignoreConditions) {
         if (sourceCollection == null) {
             return null;
         }
@@ -93,7 +93,8 @@ public abstract class AbstractCachedCopier implements Copier {
                             }
                         }
 
-                        if (sourceCollection.getClass().getName().equals("org.hibernate.collection.internal.PersistentBag")) {
+                        if (sourceCollection.getClass().getName()
+                                .equals("org.hibernate.collection.internal.PersistentBag")) {
                             return new ArrayList<>();
                         } else {
                             return sourceCollection.getClass().newInstance();
@@ -113,22 +114,20 @@ public abstract class AbstractCachedCopier implements Copier {
      * @param ignoreConditions 忽略条件
      * @return {@code true} 或 {@code false}
      */
-    protected final boolean shouldIgnore(ExtendedField extendedField, String[] ignoreConditions, Object target,
+    protected final boolean shouldIgnore(ExtendedField extendedField, Class<?>[] ignoreConditions, Object target,
             Object source) {
         boolean internalIgnore = false;
         CopyIgnore copyIgnore = extendedField.getCopyIgnore();
         if (copyIgnore != null) {
             String supplierMethodName = copyIgnore.supplierMethod();
-            String[] whenConditions = copyIgnore.when();
-            boolean whenConditionsEmpty = whenConditions.length == 1 && "".equals(whenConditions[0]);
-            String[] exceptConditions = copyIgnore.except();
-            boolean exceptConditionsEmpty = exceptConditions.length == 1 && "".equals(exceptConditions[0]);
+            Class<?>[] whenConditions = copyIgnore.when();
+            Class<?>[] exceptConditions = copyIgnore.except();
 
-            if (!whenConditionsEmpty) {
-                internalIgnore = hasCondition(whenConditions, ignoreConditions) ? true : false;
+            if (whenConditions.length > 0) {
+                internalIgnore = hasCondition(whenConditions, ignoreConditions);
             }
-            if (!exceptConditionsEmpty) {
-                internalIgnore = hasCondition(exceptConditions, ignoreConditions) ? false : true;
+            if (exceptConditions.length > 0) {
+                internalIgnore = !hasCondition(exceptConditions, ignoreConditions);
             }
             if (!supplierMethodName.equals("")) {
                 try {
@@ -202,12 +201,12 @@ public abstract class AbstractCachedCopier implements Copier {
         return ignore;
     }
 
-    protected final boolean hasCondition(String[] annotationValue, String[] ignoreConditions) {
+    protected final boolean hasCondition(Class<?>[] annotationValue, Class<?>[] ignoreConditions) {
         if (ignoreConditions == null || ignoreConditions.length == 0) {
             return false;
         }
-        for (String s1 : annotationValue) {
-            for (String s2 : ignoreConditions) {
+        for (Class<?> s1 : annotationValue) {
+            for (Class<?> s2 : ignoreConditions) {
                 if (s1.equals(s2)) {
                     return true;
                 }

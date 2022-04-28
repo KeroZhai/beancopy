@@ -61,7 +61,7 @@ public class DefaultCopier extends AbstractCachedCopier {
          * @param ignoreConditions ignore conditions
          */
         void write(Object target, Object source, FieldReader fieldReader, IgnorePolicy ignorePolicy,
-                String[] ignoreConditions);
+                Class<?>[] ignoreConditions);
     }
 
     @Data
@@ -83,7 +83,7 @@ public class DefaultCopier extends AbstractCachedCopier {
     @Override
     @SuppressWarnings("unchecked")
     public <Source, Target> Target copy(Source source, Target target, IgnorePolicy ignorePolicy,
-            String[] ignoreConditions) {
+            Class<?>[] ignoreConditions) {
         Class<Source> srcClass = (Class<Source>) source.getClass();
         Class<Target> tarClass = (Class<Target>) target.getClass();
 
@@ -281,7 +281,7 @@ public class DefaultCopier extends AbstractCachedCopier {
     @SuppressWarnings(value = { "rawtypes", "unchecked" })
     private Object handle(Object source, FieldReader fieldReader, ExtendedField targetField,
             GeneralType targetFieldGeneralType, Converter converter, Class<? extends Collection<?>> collectionClass,
-            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+            IgnorePolicy ignorePolicy, Class<?>[] ignoreConditions) {
         Object result = fieldReader.read(source);
         // TODO 支持泛型 targetField.getGenericType()
         Class targetFieldClass = targetField.getType();
@@ -342,7 +342,7 @@ public class DefaultCopier extends AbstractCachedCopier {
     @SuppressWarnings("rawtypes")
     private void invokeMethodAccess(MethodAccess methodAccess, int methodIndex, Object target, Object source,
             FieldReader fieldReader, ExtendedField targetField, GeneralType targetFieldGeneralType, Converter converter,
-            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+            IgnorePolicy ignorePolicy, Class<?>[] ignoreConditions) {
 
         if (shouldIgnore(targetField, ignoreConditions, target, source)) {
             return;
@@ -358,7 +358,7 @@ public class DefaultCopier extends AbstractCachedCopier {
     @SuppressWarnings("rawtypes")
     private void invokeSetMethod(Method method, Object target, Object source, FieldReader fieldReader,
             ExtendedField targetField, GeneralType targetFieldGeneralType, Converter converter,
-            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+            IgnorePolicy ignorePolicy, Class<?>[] ignoreConditions) {
         try {
             if (shouldIgnore(targetField, ignoreConditions, target, source)) {
                 return;
@@ -377,7 +377,7 @@ public class DefaultCopier extends AbstractCachedCopier {
     @SuppressWarnings("rawtypes")
     private void setFieldValue(ExtendedField field, Object target, Object source, FieldReader fieldReader,
             ExtendedField targetField, GeneralType targetFieldGeneralType, Converter converter,
-            IgnorePolicy ignorePolicy, String[] ignoreConditions) {
+            IgnorePolicy ignorePolicy, Class<?>[] ignoreConditions) {
         try {
             if (shouldIgnore(targetField, ignoreConditions, target, source)) {
                 return;
