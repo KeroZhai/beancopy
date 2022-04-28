@@ -27,7 +27,7 @@ public class Source {
 
 public class Target {
     private long id;
-    private int[] numbers; 
+    private int[] numbers;
     private String name;
 }
 ```
@@ -45,13 +45,13 @@ Target target = new Target();
 BeanCopyUtils.copy(new Source(), target);
 ```
 
-如你所见，getters/setters 并不是必需的，然而，一个合法的 Javabean 应该具备它们。
+如你所见，getters/setters 并不是必需的，然而，一个合法的 JavaBean 应该具备它们。
 
-### 高级
+### 进阶
 
 #### 字段重映射
 
-默认情况下，两个 Javabean 字段间是通过字段名来进行对应的。对于那些名称不同的字段，可以使用 `@AliasFor` 注解来指明被注解的字段是另一个 Javabean 中某个字段的*别名*，如下所示：
+默认情况下，两个 JavaBean 字段间是通过字段名来进行对应的。对于那些名称不同的字段，可以使用 `@AliasFor` 注解来指明被注解的字段是另一个 JavaBean 中某个字段的*别名*，如下所示：
 
 ``` Java
 public class Source {
@@ -91,38 +91,36 @@ public class Target {
 
 通过 `@CopyIgnore` 来指明当（或除了）某种条件满足时，被注解的字段应该在拷贝时被忽略。此外，你也可以指定是否要忽略值为 `null` 或空的字段。
 
-> 空字符串、数组、集合或 0 都被认为是一个空值，包括 `null`。
+> 空字符串、数组、集合或 `0` 都被认为是一个空值，**包括 `null`**。
 
 来看看下面的类：
 
 ``` Java
 public class Bean {
-    public static final String COPY_WITH_ID = "copyWithId";
-    public static final String COPY_WITHOUT_NAME = "copyWithoutName";
+    public static interface IncludingId {}
+    public static interface ExcludingName {}
 
-    @CopyIgnore(except = COPY_WITH_ID)
+    @CopyIgnore(except = IncludingId.class)
     private int id;
-    @CopyIgnore(when = COPY_WITHOUT_NAME, policy = IgnorePolicy.EMPTY)
+    @CopyIgnore(when = ExcludingName.class, policy = IgnorePolicy.EMPTY)
     private String name;
 }
 ```
 
-很明显，不难去理解上面这些注解做了些什么。字段 `id` 总会在拷贝时被忽略，除非当你想要 `COPY_WITH_ID`, 而字段 `name` 只有当你想要 `COPY_WITHOUT_NAME` **或者**它的值为空的时候才会被忽略。
+很明显，不难去理解上面这些注解做了些什么。字段 `id` 总会在拷贝时被忽略，除非当你想要包含它（`IncludingId`）, 而字段 `name` 只有当你想要排除它（`ExcludingName`） **或者**它的值为空的时候才会被忽略。
 
-两个字符串常量用来作为条件，可在拷贝的时候以数组的形式指定。例如：
+如你所见，条件表示为类字面量，可在拷贝的时候以数组的形式指定。例如：
 
 ``` Java
 // `id` 和 `name` 都会被拷贝
-BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITH_ID });
+BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.IncludingId.class });
 // `id` 和 `name` 都会被忽略
-BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.COPY_WITHOUT_NAME });
+BeanCopyUtils.copy(new Bean(), Bean.class, new String[] { Bean.ExcludingName.class });
 ```
-
-> 注意，由于条件都是简单的字符串常量，所以你可能需要保证它们的唯一性。
 
 你也可以决定是否要忽略所有值为 `null` 或空的字段：
 
-``` Java 
+``` Java
 BeanCopyUtils.copy(new Bean(), Bean.class, IgnorePolicy.EMPTY);
 ```
 
@@ -138,7 +136,7 @@ BeanCopyUtils.copy(new Bean(), Bean.class, IgnorePolicy.EMPTY);
 public class Bean {
     @ToCollection(ArrayList.class)
     private List<Integer> numbers;
-    private ArrayList<String> names; 
+    private ArrayList<String> names;
 }
 ```
 
