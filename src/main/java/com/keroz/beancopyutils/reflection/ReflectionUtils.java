@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
+import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,7 +33,7 @@ public class ReflectionUtils {
     /**
      * Returns all valid (non-final and non-static) fields (including the inherited
      * ones).
-     * 
+     *
      */
     public static List<Field> getAllValidFields(Class<?> clazz) {
         return getAllFields(clazz).stream().filter(field -> {
@@ -87,7 +88,8 @@ public class ReflectionUtils {
      */
     public static boolean isPrimitive(Class<?> clazz) {
         boolean result = false;
-        if (clazz.isPrimitive() || clazz == String.class || clazz == Date.class || clazz.isEnum()) {
+        if (clazz.isPrimitive() || clazz == String.class || clazz == Date.class
+                || Temporal.class.isAssignableFrom(clazz) || clazz.isEnum()) {
             result = true;
         } else {
             // 判断是否基本类型的包装类
@@ -104,7 +106,7 @@ public class ReflectionUtils {
 
     /**
      * Checks if the given class is of type {@link Collection}
-     * 
+     *
      * @param clazz the class to check
      * @return {@code true} if the given class is of type {@link Collection},
      *         otherwise {@code false}.
