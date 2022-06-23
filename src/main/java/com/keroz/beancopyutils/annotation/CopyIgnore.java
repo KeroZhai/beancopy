@@ -35,13 +35,13 @@ import java.lang.annotation.Target;
  *
  * <pre>
  * {@code
- *     Foo source = new Foo();
- *     source.id = 1;
- *     source.name = "foo";
- *     Foo target0 = BeanCopyUtils.copy(source, Foo.class);
- *     Foo target1 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID });
- *     Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITH_NAME });
- *     Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID, Foo.COPY_WITH_NAME });
+ * Foo source = new Foo();
+ * source.id = 1;
+ * source.name = "foo";
+ * Foo target0 = BeanCopyUtils.copy(source, Foo.class);
+ * Foo target1 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID });
+ * Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITH_NAME });
+ * Foo target2 = BeanCopyUtils.copy(source, Foo.class, new String[] { Foo.COPY_WITHOUT_ID, Foo.COPY_WITH_NAME });
  * }
  * </pre>
  *
@@ -65,9 +65,23 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CopyIgnore {
 
+    /**
+     *
+     * @deprecated Use {@code defaultIgnored} and {@code exceptionGroups} instead.
+     */
+    @Deprecated
     Class<?>[] when() default {};
 
+    /**
+     *
+     * @deprecated Use {@code defaultIgnored} and {@code exceptionGroups} instead.
+     */
+    @Deprecated
     Class<?>[] except() default {};
+
+    boolean defaultIgnored() default true;
+
+    Class<?>[] exceptionGroups() default {};
 
     IgnorePolicy policy() default IgnorePolicy.DEFAULT;
 
@@ -76,7 +90,7 @@ public @interface CopyIgnore {
     /**
      * Determines whether null or empty values should be ignored or not.
      */
-    public static enum IgnorePolicy {
+    enum IgnorePolicy {
         /**
          * Ignore null values.
          */
@@ -98,5 +112,4 @@ public @interface CopyIgnore {
          */
         DEFAULT;
     }
-
 }

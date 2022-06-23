@@ -118,17 +118,27 @@ public abstract class AbstractCachedCopier implements Copier {
             Object source) {
         boolean internalIgnore = false;
         CopyIgnore copyIgnore = extendedField.getCopyIgnore();
+
         if (copyIgnore != null) {
             String supplierMethodName = copyIgnore.supplierMethod();
-            Class<?>[] whenConditions = copyIgnore.when();
-            Class<?>[] exceptConditions = copyIgnore.except();
+            Class<?>[] exceptionGroups = copyIgnore.exceptionGroups();
 
-            if (whenConditions.length > 0) {
-                internalIgnore = hasCondition(whenConditions, ignoreConditions);
+            if (exceptionGroups.length > 0) {
+                boolean groupMatched = isGroupMatched(exceptionGroups, ignoreConditions);
+                internalIgnore = copyIgnore.defaultIgnored() ? !groupMatched : groupMatched;
+            } else {
+                // handle as legacy conditions
+                Class<?>[] whenConditions = copyIgnore.when();
+                Class<?>[] exceptConditions = copyIgnore.except();
+
+                if (whenConditions.length > 0) {
+                    internalIgnore = hasCondition(whenConditions, ignoreConditions);
+                }
+                if (exceptConditions.length > 0) {
+                    internalIgnore = !hasCondition(exceptConditions, ignoreConditions);
+                }
             }
-            if (exceptConditions.length > 0) {
-                internalIgnore = !hasCondition(exceptConditions, ignoreConditions);
-            }
+
             if (!supplierMethodName.equals("")) {
                 try {
                     Method supplierMethod = null;
@@ -163,7 +173,8 @@ public abstract class AbstractCachedCopier implements Copier {
     }
 
     @SuppressWarnings("rawtypes")
-    protected final boolean shouldIgnoreNullOrEmpty(Object value, ExtendedField field, IgnorePolicy ignorePolicy) {
+    protected final boolean shouldIgnoreNullOrEmpty(Object value, ExtendedField field,
+            IgnorePolicy ignorePolicy) {
         boolean ignore = false;
         CopyIgnore copyIgnore = field.getCopyIgnore();
         if (copyIgnore != null) {
@@ -208,6 +219,21 @@ public abstract class AbstractCachedCopier implements Copier {
         for (Class<?> s1 : annotationValue) {
             for (Class<?> s2 : ignoreConditions) {
                 if (s1.equals(s2)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    protected final boolean isGroupMatched(Class<?>[] exceptionGroups, Class<?>[] givenGroups) {
+        if (givenGroups == null || givenGroups.length == 0) {
+            return false;
+        }
+
+        for (Class<?> supportedGroup : exceptionGroups) {
+            for (Class<?> givenGroup : givenGroups) {
+                if (supportedGroup.isAssignableFrom(givenGroup)) {
                     return true;
                 }
             }
